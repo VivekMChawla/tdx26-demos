@@ -18,79 +18,64 @@
 /**
  * @file          setup-tasks.mjs
  * @summary       Shared task definitions for durable-org and scratch-org build scripts.
- * @description   Each exported function adds one task to a TaskRunner. Build scripts
- *                (build-durable-org-env.mjs, build-scratch-env.mjs) import the tasks
- *                they need and compose them into a sequence.
+ * @description   Each exported function adds one task to a {@link TaskRunner}. Build scripts
+ *                (`build-durable-org-env.mjs`, `build-scratch-env.mjs`) import the tasks
+ *                they need and compose them into a demo-specific sequence.
  * @license       Apache-2.0
  */
 //─────────────────────────────────────────────────────────────────────────────────────────────────┘
+// Import External Libraries & Modules
 import { $, fs }               from "zx";
+
+// Import Internal Classes & Functions
 import { SfdxTask }            from './sfdx-falcon/task-runner/sfdx-task.mjs';
 import { isDuplicatePermSetAssignment,
          isPermSetGroupNotUpdated }
                                from './sfdx-falcon/utilities/sfdx.mjs';
 
-// ── Baseline & cleanup ──────────────────────────────────────────────────────
-
-/** Reset all tracked files to the baseline tag. */
-export function resetToBaseline(tr, baselineTag) {
-  tr.addTask({
-    title: `Reset tracked files to baseline (${baselineTag})`,
-    task: async () => { await $`git checkout ${baselineTag} -- .`; }
-  });
-}
-
-/** Remove empty directories left over from a baseline reset. */
-export function cleanEmptyDirs(tr) {
-  tr.addTask({
-    title: `Clean up empty directories`,
-    task: async () => { await $`./scripts/clean-files-and-dirs.sh`; }
-  });
-}
-
-/** Reset tracked files back to the baseline tag after setup completes. */
-export function postSetupReset(tr, baselineTag) {
-  tr.addTask({
-    title: `Reset files modified during setup to baseline (${baselineTag})`,
-    task: async () => { await $`git checkout ${baselineTag} -- .`; }
-  });
-}
-
-// ── Scratch org lifecycle ───────────────────────────────────────────────────
-
-/** Delete an existing scratch org (errors suppressed). */
-export function deleteScratchOrg(tr, devOrgAlias) {
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    activateAgent
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} agentName - The developer name of the agent to activate
+ *              (e.g. `'Local_Info_Agent'`).
+ * @param       {number} [version=1] - The agent version to activate.
+ * @returns     {void}
+ * @summary     Activates a published agent so it can handle conversations.
+ * @description Runs `sf agent activate` for the specified agent and version. The agent
+ *              must have been published (see {@link publishAgent}) before it can be activated.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function activateAgent(tr, agentName, version = 1) {
   tr.addTask(new SfdxTask(
-    `Delete existing scratch org`,
-    `sf org delete scratch -p -o ${devOrgAlias}`,
-    {suppressErrors: true}
-  ));
-}
-
-/** Create a new scratch org. */
-export function createScratchOrg(tr, devOrgAlias, devOrgConfigFile) {
-  tr.addTask(new SfdxTask(
-    `Create new scratch org`,
-    `sf org create scratch -d -a ${devOrgAlias} -f config/${devOrgConfigFile}`,
+    `Activate the ${agentName}`,
+    `sf agent activate -n ${agentName} --version ${version}`,
     {suppressErrors: false, renderStdioOnError: true}
   ));
 }
 
-/** Open a page in the scratch org's browser. */
-export function openOrgPage(tr, pagePath, alternativeBrowser) {
-  const cmd = alternativeBrowser
-    ? `sf org open -b ${alternativeBrowser} -p ${pagePath}`
-    : `sf org open -p ${pagePath}`;
-  tr.addTask(new SfdxTask(
-    `Open ${pagePath}`,
-    cmd,
-    {suppressErrors: false}
-  ));
-}
-
-// ── Permissions ─────────────────────────────────────────────────────────────
-
-/** Assign one or more permission sets (space-separated -n flags). */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    assignPermSets
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} title - The display title for this task in the task runner output.
+ * @param       {string} permSetFlags - One or more `-n` flags for `sf org assign permset`
+ *              (e.g. `'-n MyPermSet'` or `'-n PermA -n PermB -b someuser@example.com'`).
+ * @param       {Object} [opts={}] - Optional overrides for SfdxTask behavior.
+ * @param       {Function|boolean} [opts.suppressErrors] - Error suppression predicate or boolean.
+ *              Defaults to {@link isDuplicatePermSetAssignment} (suppresses "already assigned" errors).
+ * @param       {boolean} [opts.renderStdioOnError] - Whether to render stdout/stderr on failure.
+ *              Defaults to `true`.
+ * @param       {Object} [opts.retry] - Retry configuration (e.g. for PermissionSetGroup
+ *              recalculation delays). Shape: `{ maxAttempts, delayMs, retryIf }`.
+ * @returns     {void}
+ * @summary     Assigns one or more permission sets to a user.
+ * @description Runs `sf org assign permset` with the provided flags. By default, suppresses
+ *              "duplicate assignment" errors so the task is idempotent. Use the `opts.retry`
+ *              parameter for assignments that depend on PermissionSetGroup recalculation,
+ *              which can take several seconds after a deployment.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
 export function assignPermSets(tr, title, permSetFlags, opts = {}) {
   tr.addTask(new SfdxTask(
     title,
@@ -103,9 +88,105 @@ export function assignPermSets(tr, title, permSetFlags, opts = {}) {
   ));
 }
 
-// ── Deployment ──────────────────────────────────────────────────────────────
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    cleanEmptyDirs
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @returns     {void}
+ * @summary     Removes empty directories left over from a baseline reset.
+ * @description Runs the `clean-files-and-dirs.sh` shell script, which removes untracked
+ *              files and any empty directories in the project tree (excluding `.git/`,
+ *              `.sf/`, and `.sfdx/`). Typically called immediately after
+ *              {@link resetToBaseline} to clean up directories that become empty when
+ *              files are restored to their baseline state.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function cleanEmptyDirs(tr) {
+  tr.addTask({
+    title: `Clean up empty directories`,
+    task: async () => { await $`./scripts/clean-files-and-dirs.sh`; }
+  });
+}
 
-/** Deploy a manifest. */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    createAgentUser
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} agentUsername - The username that was written to `data-import/User.json`
+ *              by a prior call to {@link updateAgentUserJson}.
+ * @returns     {void}
+ * @summary     Creates the agent user record from `data-import/User.json`.
+ * @description Imports the User record using `sf data import tree`. The JSON file must have
+ *              already been updated with the correct `ProfileId`, `Username`, and
+ *              `CommunityNickname` via {@link updateAgentUserJson} before this task runs.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function createAgentUser(tr, agentUsername) {
+  tr.addTask(new SfdxTask(
+    `Create agent user (${agentUsername})`,
+    `sf data import tree --files data-import/User.json`,
+    {suppressErrors: false, renderStdioOnError: true}
+  ));
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    createScratchOrg
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} devOrgAlias - The alias to assign to the new scratch org
+ *              (e.g. `'SCRATCH:my-project'`).
+ * @param       {string} devOrgConfigFile - The scratch org definition filename, expected
+ *              to reside in the `config/` directory (e.g. `'afdx-scratch-def.json'`).
+ * @returns     {void}
+ * @summary     Creates a new DEVELOPMENT scratch org.
+ * @description Runs `sf org create scratch` with the `-d` (default org) flag and the
+ *              specified alias and config file. The scratch org becomes the default
+ *              target org for subsequent CLI commands.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function createScratchOrg(tr, devOrgAlias, devOrgConfigFile) {
+  tr.addTask(new SfdxTask(
+    `Create new scratch org`,
+    `sf org create scratch -d -a ${devOrgAlias} -f config/${devOrgConfigFile}`,
+    {suppressErrors: false, renderStdioOnError: true}
+  ));
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    deleteScratchOrg
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} devOrgAlias - The alias of the scratch org to delete
+ *              (e.g. `'SCRATCH:my-project'`).
+ * @returns     {void}
+ * @summary     Deletes an existing scratch org if one is present.
+ * @description Runs `sf org delete scratch` with the `-p` (no-prompt) flag. Errors are
+ *              suppressed so this task succeeds even when no scratch org exists for the
+ *              given alias. Typically called before {@link createScratchOrg} to ensure
+ *              a clean starting point.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function deleteScratchOrg(tr, devOrgAlias) {
+  tr.addTask(new SfdxTask(
+    `Delete existing scratch org`,
+    `sf org delete scratch -p -o ${devOrgAlias}`,
+    {suppressErrors: true}
+  ));
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    deployManifest
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} title - The display title for this task in the task runner output.
+ * @param       {string} manifestPath - Path to the `package.xml` manifest file, relative to
+ *              the project root (e.g. `'manifests/EverythingExceptAgents.package.xml'`).
+ * @returns     {void}
+ * @summary     Deploys project source to the target org using a manifest.
+ * @description Runs `sf project deploy start --manifest` with the specified manifest path.
+ *              The target org is determined by the current default org configuration.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
 export function deployManifest(tr, title, manifestPath) {
   tr.addTask(new SfdxTask(
     title,
@@ -114,18 +195,20 @@ export function deployManifest(tr, title, manifestPath) {
   ));
 }
 
-// ── Data import ─────────────────────────────────────────────────────────────
-
-/** Import data using a plan file. */
-export function importDataPlan(tr, title, planPath) {
-  tr.addTask(new SfdxTask(
-    title,
-    `sf data import tree --plan ${planPath}`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
-}
-
-/** Import data using individual files. */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    importDataFiles
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} title - The display title for this task in the task runner output.
+ * @param       {string} filesArg - One or more file paths to pass to the `--files` flag
+ *              of `sf data import tree` (e.g. `'data-import/User.json'`).
+ * @returns     {void}
+ * @summary     Imports data records from individual JSON files.
+ * @description Runs `sf data import tree --files` with the specified file argument.
+ *              Use this for single-file imports; for multi-file plans with relationships,
+ *              use {@link importDataPlan} instead.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
 export function importDataFiles(tr, title, filesArg) {
   tr.addTask(new SfdxTask(
     title,
@@ -134,9 +217,109 @@ export function importDataFiles(tr, title, filesArg) {
   ));
 }
 
-// ── Agent user ──────────────────────────────────────────────────────────────
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    importDataPlan
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} title - The display title for this task in the task runner output.
+ * @param       {string} planPath - Path to the data plan JSON file, relative to the project
+ *              root (e.g. `'data-import/sample-data-plan.json'`).
+ * @returns     {void}
+ * @summary     Imports sample data using a data plan file.
+ * @description Runs `sf data import tree --plan` with the specified plan path. Data plans
+ *              define multiple sObject types and their relationships, allowing records to
+ *              be imported in the correct dependency order.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function importDataPlan(tr, title, planPath) {
+  tr.addTask(new SfdxTask(
+    title,
+    `sf data import tree --plan ${planPath}`,
+    {suppressErrors: false, renderStdioOnError: true}
+  ));
+}
 
-/** Query for the Einstein Agent User profile ID (stores result in ctx.profileId). */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    openOrgPage
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} pagePath - The relative path to open in the org
+ *              (e.g. `'lightning/setup/DeployStatus/home'`).
+ * @param       {string|null} alternativeBrowser - The browser executable to use
+ *              (e.g. `'firefox'`), or `null` to use the system default browser.
+ * @returns     {void}
+ * @summary     Opens a page in the target org using the specified or default browser.
+ * @description Runs `sf org open -p <pagePath>`, optionally with `-b <browser>` if an
+ *              alternative browser is specified. Useful for opening the Deployment Status
+ *              page or other setup pages during org configuration.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function openOrgPage(tr, pagePath, alternativeBrowser) {
+  const cmd = alternativeBrowser
+    ? `sf org open -b ${alternativeBrowser} -p ${pagePath}`
+    : `sf org open -p ${pagePath}`;
+  tr.addTask(new SfdxTask(
+    `Open ${pagePath}`,
+    cmd,
+    {suppressErrors: false}
+  ));
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    postSetupReset
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} baselineTag - The git tag to reset to (e.g. `'my-branch-baseline'`).
+ * @returns     {void}
+ * @summary     Resets tracked files back to the baseline tag after setup completes.
+ * @description Restores files that were modified during setup (e.g. `data-import/User.json`)
+ *              so the repo is left in the same clean state it started in. This is the
+ *              counterpart to {@link resetToBaseline} — one runs at the start, this one
+ *              runs at the end.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function postSetupReset(tr, baselineTag) {
+  tr.addTask({
+    title: `Reset files modified during setup to baseline (${baselineTag})`,
+    task: async () => { await $`git checkout ${baselineTag} -- .`; }
+  });
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    publishAgent
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} agentName - The developer name of the agent to publish
+ *              (e.g. `'Local_Info_Agent'`).
+ * @returns     {void}
+ * @summary     Publishes an agent's authoring bundle to the target org.
+ * @description Runs `sf agent publish authoring-bundle` for the specified agent. The agent's
+ *              authoring bundle must already be deployed (see {@link deployManifest}) and its
+ *              `default_agent_user` must be set (see {@link setAgentBundleUser}) before publishing.
+ *              After publishing, use {@link activateAgent} to make the agent available for
+ *              conversations.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function publishAgent(tr, agentName) {
+  tr.addTask(new SfdxTask(
+    `Publish the ${agentName}`,
+    `sf agent publish authoring-bundle -n ${agentName}`,
+    {suppressErrors: false, renderStdioOnError: true}
+  ));
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    queryAgentUserProfileId
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @returns     {void}
+ * @summary     Queries for the Einstein Agent User profile ID.
+ * @description Runs a SOQL query to find the `Id` of the `'Einstein Agent User'` profile
+ *              and stores the result in `ctx.profileId` on the TaskRunner context. This
+ *              value is consumed by {@link updateAgentUserJson} to set the correct profile
+ *              on the agent user record before it is created.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
 export function queryAgentUserProfileId(tr) {
   tr.addTask(new SfdxTask(
     `Query for Einstein Agent User profile ID`,
@@ -150,32 +333,43 @@ export function queryAgentUserProfileId(tr) {
   ));
 }
 
-/** Update data-import/User.json with the profile ID and agent username. */
-export function updateAgentUserJson(tr, agentUsername, agentNickname) {
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    resetToBaseline
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} baselineTag - The git tag to reset to (e.g. `'my-branch-baseline'`).
+ * @returns     {void}
+ * @summary     Resets all tracked files to the baseline tag.
+ * @description Runs `git checkout <baselineTag> -- .` to restore every tracked file to the
+ *              state captured by the baseline tag. This guarantees a clean, known starting
+ *              state regardless of what the working tree looks like when the script is invoked.
+ *              Typically the first task in any build sequence. Follow with {@link cleanEmptyDirs}
+ *              to remove directories that become empty after the reset.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function resetToBaseline(tr, baselineTag) {
   tr.addTask({
-    title: `Update User.json (${agentUsername})`,
-    task: async (ctx) => {
-      const userJson = fs.readJsonSync('data-import/User.json');
-      userJson.records[0].ProfileId = ctx.profileId;
-      userJson.records[0].Username = agentUsername;
-      userJson.records[0].CommunityNickname = agentNickname;
-      fs.writeJsonSync('data-import/User.json', userJson, { spaces: 4 });
-    }
+    title: `Reset tracked files to baseline (${baselineTag})`,
+    task: async () => { await $`git checkout ${baselineTag} -- .`; }
   });
 }
 
-/** Create the agent user from data-import/User.json. */
-export function createAgentUser(tr, agentUsername) {
-  tr.addTask(new SfdxTask(
-    `Create agent user (${agentUsername})`,
-    `sf data import tree --files data-import/User.json`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
-}
-
-// ── Agent lifecycle ─────────────────────────────────────────────────────────
-
-/** Replace the placeholder agent user in an authoring bundle with the actual username. */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    setAgentBundleUser
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} agentName - The developer name of the agent whose authoring bundle
+ *              will be updated (e.g. `'Local_Info_Agent'`).
+ * @param       {string} agentUsername - The username to substitute for the
+ *              `'UPDATE_WITH_YOUR_DEFAULT_AGENT_USER'` placeholder in the `.agent` file.
+ * @returns     {void}
+ * @summary     Sets the `default_agent_user` in an agent's authoring bundle.
+ * @description Reads the `.agent` file from `force-app/main/default/aiAuthoringBundles/`
+ *              and replaces the `'UPDATE_WITH_YOUR_DEFAULT_AGENT_USER'` placeholder with the
+ *              actual agent username. This must be done before deploying the authoring bundle
+ *              (see {@link deployManifest}) so the agent runs under the correct user.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
 export function setAgentBundleUser(tr, agentName, agentUsername) {
   const agentFilePath = `force-app/main/default/aiAuthoringBundles/${agentName}/${agentName}.agent`;
   tr.addTask({
@@ -187,20 +381,31 @@ export function setAgentBundleUser(tr, agentName, agentUsername) {
   });
 }
 
-/** Publish an agent's authoring bundle. */
-export function publishAgent(tr, agentName) {
-  tr.addTask(new SfdxTask(
-    `Publish the ${agentName}`,
-    `sf agent publish authoring-bundle -n ${agentName}`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
-}
-
-/** Activate a published agent. */
-export function activateAgent(tr, agentName, version = 1) {
-  tr.addTask(new SfdxTask(
-    `Activate the ${agentName}`,
-    `sf agent activate -n ${agentName} --version ${version}`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    updateAgentUserJson
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} agentUsername - The unique username for the agent user
+ *              (e.g. `'afdx-agent@testdrive.org.abc123'`).
+ * @param       {string} agentNickname - The `CommunityNickname` for the agent user.
+ *              Must be 40 characters or fewer.
+ * @returns     {void}
+ * @summary     Updates `data-import/User.json` with the agent user's profile ID and username.
+ * @description Reads `data-import/User.json`, sets `ProfileId` from `ctx.profileId`
+ *              (populated by a prior {@link queryAgentUserProfileId} call), and writes the
+ *              `Username` and `CommunityNickname` fields. The updated file is then used
+ *              by {@link createAgentUser} to insert the agent user record into the org.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function updateAgentUserJson(tr, agentUsername, agentNickname) {
+  tr.addTask({
+    title: `Update User.json (${agentUsername})`,
+    task: async (ctx) => {
+      const userJson = fs.readJsonSync('data-import/User.json');
+      userJson.records[0].ProfileId = ctx.profileId;
+      userJson.records[0].Username = agentUsername;
+      userJson.records[0].CommunityNickname = agentNickname;
+      fs.writeJsonSync('data-import/User.json', userJson, { spaces: 4 });
+    }
+  });
 }
