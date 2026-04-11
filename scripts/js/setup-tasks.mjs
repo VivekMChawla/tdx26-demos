@@ -291,6 +291,10 @@ export function postSetupReset(tr, baselineTag) {
  * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
  * @param       {string} agentName - The developer name of the agent to publish
  *              (e.g. `'Local_Info_Agent'`).
+ * @param       {Object} [opts={}] - Optional flags for the publish command.
+ * @param       {boolean} [opts.skipRetrieve=false] - When `true`, appends `--skip-retrieve`
+ *              to skip retrieving the compiled agent DSL after publishing. Useful when you
+ *              don't need the compiled output written back to the local project.
  * @returns     {void}
  * @summary     Publishes an agent's authoring bundle to the target org.
  * @description Runs `sf agent publish authoring-bundle` for the specified agent. The agent's
@@ -300,10 +304,11 @@ export function postSetupReset(tr, baselineTag) {
  *              conversations.
  */
 //─────────────────────────────────────────────────────────────────────────────────────────────────┘
-export function publishAgent(tr, agentName) {
+export function publishAgent(tr, agentName, opts = {}) {
+  const skipFlag = opts.skipRetrieve ? ' --skip-retrieve' : '';
   tr.addTask(new SfdxTask(
     `Publish the ${agentName}`,
-    `sf agent publish authoring-bundle -n ${agentName}`,
+    `sf agent publish authoring-bundle -n ${agentName} ${skipFlag}`,
     {suppressErrors: false, renderStdioOnError: true}
   ));
 }
