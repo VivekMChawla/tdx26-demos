@@ -1,2 +1,5 @@
 # tdx26-demos
-Demo Source for TDX26
+Source for TDX26 Demos
+- `afdx-booth-demo`
+- `afdx-theater-demo`
+- `afdx-breakout-demo`
