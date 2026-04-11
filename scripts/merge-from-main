@@ -2,8 +2,8 @@
 # merge-from-main
 #
 # Merges changes from `main` into each specified target branch while leaving
-# the contents of .claude/skills/ and .a4drules/ exactly as they are on each
-# target branch — those directories are never touched by the merge.
+# demo-specific paths (force-app/ and the env build scripts) exactly as they
+# are on each target branch — those paths are never touched by the merge.
 #
 # Usage:
 #   ./scripts/merge-from-main [--verbose] [branch1 branch2 ...]
@@ -11,13 +11,13 @@
 # Examples:
 #   ./scripts/merge-from-main
 #   ./scripts/merge-from-main --verbose
-#   ./scripts/merge-from-main sf-skills-test
-#   ./scripts/merge-from-main --verbose sf-skills-test
+#   ./scripts/merge-from-main afdx-booth-demo
+#   ./scripts/merge-from-main --verbose afdx-booth-demo
 #
 set -euo pipefail
 
 SOURCE="main"
-EXCLUDED=(".claude/skills" ".a4drules")
+EXCLUDED=("force-app" "scripts/js/build-durable-org-env.mjs" "scripts/js/build-scratch-env.mjs")
 ORIGINAL=$(git rev-parse --abbrev-ref HEAD)
 GIT_DIR=$(git rev-parse --git-dir)
 VERBOSE=false
@@ -36,9 +36,9 @@ if [ ${#ARGS[@]} -gt 0 ]; then
   TARGETS=("${ARGS[@]}")
 else
   TARGETS=(
-    "sf-skills-test"
-    "agentforce-adlc-test"
-    "agentforce-dx-test"
+    "afdx-booth-demo"
+    "afdx-theater-demo"
+    "afdx-breakout-demo"
   )
 fi
 
@@ -139,19 +139,19 @@ for TARGET in "${TARGETS[@]}"; do
     continue
   fi
 
-  # Restore each excluded directory to its pre-merge state on this branch.
-  # Always clear the index for the dir first — this resolves any conflict
+  # Restore each excluded path to its pre-merge state on this branch.
+  # Always clear the index for the path first — this resolves any conflict
   # markers, staged deletions, or new files main introduced in those paths.
   for DIR in "${EXCLUDED[@]}"; do
     git rm -r --cached --ignore-unmatch "$DIR" > /dev/null 2>&1 || true
     if git rev-parse "HEAD:$DIR" > /dev/null 2>&1; then
-      # Dir exists on this branch — restore index and working tree from HEAD.
+      # Path exists on this branch — restore index and working tree from HEAD.
       git checkout HEAD -- "$DIR"
       # Remove any untracked files main left behind in the working tree.
       git clean -fd "$DIR" > /dev/null 2>&1 || true
       echo "  Preserved $DIR"
     else
-      # Dir was not on this branch — remove working tree remnants from main.
+      # Path was not on this branch — remove working tree remnants from main.
       rm -rf "$DIR"
       echo "  Removed $DIR (not present on $TARGET)"
     fi
@@ -162,7 +162,7 @@ for TARGET in "${TARGETS[@]}"; do
     echo "  No changes remain after exclusions — skipping commit."
     git merge --abort
   else
-    git commit -m "Merge '$SOURCE' into '$TARGET' (excluding skill/rules dirs)"
+    git commit -m "Merge '$SOURCE' into '$TARGET' (excluding demo-specific paths)"
     echo "  Committed."
     git push origin "$TARGET"
     BRANCH_TAG="${TARGET}-baseline"
