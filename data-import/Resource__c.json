@@ -1,0 +1,172 @@
+{
+    "records": [
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResHP1" },
+            "Name": "Primary Power Generator",
+            "Quantity__c": 4,
+            "Utilization__c": 65,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResHP2" },
+            "Name": "Backup Power Generator",
+            "Quantity__c": 2,
+            "Utilization__c": 10,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResHP3" },
+            "Name": "Docking Bay",
+            "Quantity__c": 6,
+            "Utilization__c": 50,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResHP4" },
+            "Name": "Water Recycling Unit",
+            "Quantity__c": 3,
+            "Utilization__c": 72,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResHP5" },
+            "Name": "Communications Array",
+            "Quantity__c": 2,
+            "Utilization__c": 55,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResHP6" },
+            "Name": "Life Support Module",
+            "Quantity__c": 4,
+            "Utilization__c": 80,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResNO1" },
+            "Name": "Primary Power Generator",
+            "Quantity__c": 2,
+            "Utilization__c": 45,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResNO2" },
+            "Name": "Docking Bay",
+            "Quantity__c": 3,
+            "Utilization__c": 33,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResNO3" },
+            "Name": "Water Recycling Unit",
+            "Quantity__c": 1,
+            "Utilization__c": 60,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResNO4" },
+            "Name": "Life Support Module",
+            "Quantity__c": 2,
+            "Utilization__c": 50,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResNO5" },
+            "Name": "Construction Crane",
+            "Quantity__c": 3,
+            "Utilization__c": 90,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResAS1" },
+            "Name": "Primary Power Generator",
+            "Quantity__c": 3,
+            "Utilization__c": 95,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResAS2" },
+            "Name": "Backup Power Generator",
+            "Quantity__c": 1,
+            "Utilization__c": 88,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResAS3" },
+            "Name": "Docking Bay",
+            "Quantity__c": 4,
+            "Utilization__c": 85,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResAS4" },
+            "Name": "Water Recycling Unit",
+            "Quantity__c": 2,
+            "Utilization__c": 92,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResAS5" },
+            "Name": "Life Support Module",
+            "Quantity__c": 3,
+            "Utilization__c": 97,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResAS6" },
+            "Name": "Communications Array",
+            "Quantity__c": 1,
+            "Utilization__c": 78,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResSB1" },
+            "Name": "Primary Power Generator",
+            "Quantity__c": 5,
+            "Utilization__c": 40,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResSB2" },
+            "Name": "Backup Power Generator",
+            "Quantity__c": 3,
+            "Utilization__c": 5,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResSB3" },
+            "Name": "Docking Bay",
+            "Quantity__c": 8,
+            "Utilization__c": 35,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResSB4" },
+            "Name": "Water Recycling Unit",
+            "Quantity__c": 4,
+            "Utilization__c": 55,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResSB5" },
+            "Name": "Communications Array",
+            "Quantity__c": 3,
+            "Utilization__c": 30,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResSB6" },
+            "Name": "Life Support Module",
+            "Quantity__c": 5,
+            "Utilization__c": 60,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Resource__c", "referenceId": "ResSB7" },
+            "Name": "Solar Panel Array",
+            "Quantity__c": 12,
+            "Utilization__c": 45,
+            "Space_Station__c": "@SolarisBaseRef"
+        }
+    ]
+}

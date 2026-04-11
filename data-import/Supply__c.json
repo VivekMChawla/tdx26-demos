@@ -1,0 +1,172 @@
+{
+    "records": [
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupHP1" },
+            "Name": "Ration Packs",
+            "Quantity__c": 500,
+            "Unit_Cost__c": 12.50,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupHP2" },
+            "Name": "Medical Kits",
+            "Quantity__c": 120,
+            "Unit_Cost__c": 85.00,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupHP3" },
+            "Name": "Spare Hull Plating",
+            "Quantity__c": 75,
+            "Unit_Cost__c": 320.00,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupHP4" },
+            "Name": "Oxygen Canisters",
+            "Quantity__c": 300,
+            "Unit_Cost__c": 45.00,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupHP5" },
+            "Name": "Water Purification Filters",
+            "Quantity__c": 60,
+            "Unit_Cost__c": 150.00,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupHP6" },
+            "Name": "Circuit Boards",
+            "Quantity__c": 200,
+            "Unit_Cost__c": 55.00,
+            "Space_Station__c": "@HorizonPrimeRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupNO1" },
+            "Name": "Ration Packs",
+            "Quantity__c": 250,
+            "Unit_Cost__c": 12.50,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupNO2" },
+            "Name": "Medical Kits",
+            "Quantity__c": 40,
+            "Unit_Cost__c": 85.00,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupNO3" },
+            "Name": "Construction Materials",
+            "Quantity__c": 400,
+            "Unit_Cost__c": 200.00,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupNO4" },
+            "Name": "Oxygen Canisters",
+            "Quantity__c": 150,
+            "Unit_Cost__c": 45.00,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupNO5" },
+            "Name": "Spare Hull Plating",
+            "Quantity__c": 180,
+            "Unit_Cost__c": 320.00,
+            "Space_Station__c": "@NebulaOutpostRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupAS1" },
+            "Name": "Ration Packs",
+            "Quantity__c": 8,
+            "Unit_Cost__c": 12.50,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupAS2" },
+            "Name": "Medical Kits",
+            "Quantity__c": 3,
+            "Unit_Cost__c": 85.00,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupAS3" },
+            "Name": "Spare Hull Plating",
+            "Quantity__c": 2,
+            "Unit_Cost__c": 320.00,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupAS4" },
+            "Name": "Oxygen Canisters",
+            "Quantity__c": 5,
+            "Unit_Cost__c": 45.00,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupAS5" },
+            "Name": "Water Purification Filters",
+            "Quantity__c": 1,
+            "Unit_Cost__c": 150.00,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupAS6" },
+            "Name": "Circuit Boards",
+            "Quantity__c": 4,
+            "Unit_Cost__c": 55.00,
+            "Space_Station__c": "@ArcturusStationRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupSB1" },
+            "Name": "Ration Packs",
+            "Quantity__c": 600,
+            "Unit_Cost__c": 12.50,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupSB2" },
+            "Name": "Medical Kits",
+            "Quantity__c": 150,
+            "Unit_Cost__c": 85.00,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupSB3" },
+            "Name": "Spare Hull Plating",
+            "Quantity__c": 100,
+            "Unit_Cost__c": 320.00,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupSB4" },
+            "Name": "Oxygen Canisters",
+            "Quantity__c": 400,
+            "Unit_Cost__c": 45.00,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupSB5" },
+            "Name": "Water Purification Filters",
+            "Quantity__c": 80,
+            "Unit_Cost__c": 150.00,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupSB6" },
+            "Name": "Circuit Boards",
+            "Quantity__c": 250,
+            "Unit_Cost__c": 55.00,
+            "Space_Station__c": "@SolarisBaseRef"
+        },
+        {
+            "attributes": { "type": "Supply__c", "referenceId": "SupSB7" },
+            "Name": "Solar Panel Components",
+            "Quantity__c": 90,
+            "Unit_Cost__c": 275.00,
+            "Space_Station__c": "@SolarisBaseRef"
+        }
+    ]
+}

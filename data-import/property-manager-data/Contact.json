@@ -1,0 +1,44 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Contact",
+        "referenceId": "ContactRef1"
+      },
+      "FirstName": "Jennifer",
+      "LastName": "Anderson [1773189279641-0]",
+      "Email": "jennifer.anderson+1773189279641@example.com",
+      "Phone": "(555) 123-4567"
+    },
+    {
+      "attributes": {
+        "type": "Contact",
+        "referenceId": "ContactRef2"
+      },
+      "FirstName": "David",
+      "LastName": "Rodriguez [1773189279641-1]",
+      "Email": "david.rodriguez+1773189279641@example.com",
+      "Phone": "(555) 234-5678"
+    },
+    {
+      "attributes": {
+        "type": "Contact",
+        "referenceId": "ContactRef3"
+      },
+      "FirstName": "Maria",
+      "LastName": "Garcia [1773189279641-2]",
+      "Email": "maria.garcia+1773189279641@example.com",
+      "Phone": "(555) 345-6789"
+    },
+    {
+      "attributes": {
+        "type": "Contact",
+        "referenceId": "ContactRef4"
+      },
+      "FirstName": "James",
+      "LastName": "Brown [1773189279641-3]",
+      "Email": "james.brown+1773189279641@example.com",
+      "Phone": "(555) 456-7890"
+    }
+  ]
+}

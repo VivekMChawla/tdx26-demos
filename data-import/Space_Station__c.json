@@ -1,0 +1,40 @@
+{
+    "records": [
+        {
+            "attributes": {
+                "type": "Space_Station__c",
+                "referenceId": "HorizonPrimeRef"
+            },
+            "Name": "Horizon Prime",
+            "Project_Status__c": "Green",
+            "Shield_Status__c": "Not Yet Operational"
+        },
+        {
+            "attributes": {
+                "type": "Space_Station__c",
+                "referenceId": "NebulaOutpostRef"
+            },
+            "Name": "Nebula Outpost",
+            "Project_Status__c": "Yellow",
+            "Shield_Status__c": "Not Yet Operational"
+        },
+        {
+            "attributes": {
+                "type": "Space_Station__c",
+                "referenceId": "ArcturusStationRef"
+            },
+            "Name": "Arcturus Station",
+            "Project_Status__c": "Red",
+            "Shield_Status__c": "Not Yet Operational"
+        },
+        {
+            "attributes": {
+                "type": "Space_Station__c",
+                "referenceId": "SolarisBaseRef"
+            },
+            "Name": "Solaris Base",
+            "Project_Status__c": "Complete",
+            "Shield_Status__c": "Fully Operational"
+        }
+    ]
+}

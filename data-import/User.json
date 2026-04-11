@@ -1,0 +1,23 @@
+{
+    "records": [
+        {
+            "attributes": {
+                "type": "User",
+                "referenceId": "UserRef1"
+            },
+            "ProfileId": "00eD6000001Ub65IAC",
+            "Username": "afdx-agent@testdrive.orgbdeaa180-5e6b-45a8-a8d9-502f32a6a0a8",
+            "Alias": "AFDXagnt",
+            "CommunityNickname": "AFDX TestDrive Agent",
+            "Email": "noreply@example.com",
+            "FirstName": "AFDX TestDrive",
+            "LastName": "Agent",
+            "IsActive": true,
+            "ForecastEnabled": false,
+            "EmailEncodingKey": "UTF-8",
+            "LanguageLocaleKey": "en_US",
+            "LocaleSidKey": "en_US",
+            "TimeZoneSidKey": "America/Los_Angeles"
+        }
+    ]
+}
