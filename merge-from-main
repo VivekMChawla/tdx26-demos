@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+# merge-from-main
+#
+# Merges changes from `main` into each specified target branch while leaving
+# the contents of .claude/skills/ and .a4drules/ exactly as they are on each
+# target branch — those directories are never touched by the merge.
+#
+# Usage:
+#   ./merge-from-main [--verbose] [branch1 branch2 ...]
+#
+# Examples:
+#   ./merge-from-main
+#   ./merge-from-main --verbose
+#   ./merge-from-main sf-skills-test
+#   ./merge-from-main --verbose sf-skills-test
+#
+set -euo pipefail
+
+SOURCE="main"
+EXCLUDED=(".claude/skills" ".a4drules")
+ORIGINAL=$(git rev-parse --abbrev-ref HEAD)
+GIT_DIR=$(git rev-parse --git-dir)
+VERBOSE=false
+
+# ── Parse flags and target branches ──────────────────────────────────────────
+ARGS=()
+for ARG in "$@"; do
+  if [ "$ARG" = "--verbose" ]; then
+    VERBOSE=true
+  else
+    ARGS+=("$ARG")
+  fi
+done
+
+if [ ${#ARGS[@]} -gt 0 ]; then
+  TARGETS=("${ARGS[@]}")
+else
+  TARGETS=(
+    "sf-skills-test"
+    "agentforce-adlc-test"
+    "agentforce-dx-test"
+  )
+fi
+
+# ── Verify all target branches exist locally ─────────────────────────────────
+MISSING=()
+for TARGET in "${TARGETS[@]}"; do
+  if ! git rev-parse --verify "$TARGET" > /dev/null 2>&1; then
+    MISSING+=("$TARGET")
+  fi
+done
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo "Error: the following target branches do not exist locally:"
+  for B in "${MISSING[@]}"; do
+    echo "  - $B"
+  done
+  exit 1
+fi
+
+# ── Require main to be the current branch ────────────────────────────────────
+if [ "$ORIGINAL" != "$SOURCE" ]; then
+  echo "Error: this script must be run from '$SOURCE' (currently on '$ORIGINAL')."
+  exit 1
+fi
+
+# ── Require a clean working tree before touching anything ─────────────────────
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Error: working tree has uncommitted changes. Commit or stash them first."
+  exit 1
+fi
+
+# ── Verify local and remote main are at the same commit ──────────────────────
+LOCAL_HASH=$(git rev-parse "$SOURCE")
+REMOTE_HASH=$(git rev-parse "origin/$SOURCE")
+
+if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
+  echo "Error: local '$SOURCE' ($LOCAL_HASH) and origin/$SOURCE ($REMOTE_HASH) are not in sync."
+  echo "Manually ensure they point to the same commit before running this script."
+  exit 1
+fi
+
+echo "Verified: local and remote $SOURCE are in sync ($LOCAL_HASH)."
+
+# ── Process each target branch ────────────────────────────────────────────────
+for TARGET in "${TARGETS[@]}"; do
+  echo ""
+  echo "── Merging $SOURCE → $TARGET ──"
+
+  git checkout "$TARGET" --quiet
+
+  # Stage the merge without committing. Content conflicts are auto-resolved in
+  # favor of main via -X theirs. If the merge still fails (e.g. modify/delete
+  # or file-location conflicts), check whether all unresolved conflicts are
+  # within excluded directories — if so, the restore step below handles them.
+  MERGE_FAILED=false
+  MERGE_OUTPUT=$(git merge --no-commit --no-ff -X theirs "origin/$SOURCE" 2>&1) || MERGE_FAILED=true
+
+  if [ "$MERGE_FAILED" = true ]; then
+    ALL_IN_EXCLUDED=true
+    while IFS= read -r CONFLICTED; do
+      [ -z "$CONFLICTED" ] && continue
+      IN_EXCL=false
+      for DIR in "${EXCLUDED[@]}"; do
+        case "$CONFLICTED" in "$DIR"|"$DIR/"*) IN_EXCL=true; break ;; esac
+      done
+      [ "$IN_EXCL" = false ] && { ALL_IN_EXCLUDED=false; break; }
+    done < <(git ls-files -u | awk '{print $4}' | sort -u)
+
+    if [ "$ALL_IN_EXCLUDED" = false ]; then
+      echo "  Error: merge conflict outside excluded directories on '$TARGET'."
+      echo "$MERGE_OUTPUT"
+      echo "  Aborting."
+      git merge --abort
+      git checkout "$ORIGINAL" --quiet
+      exit 1
+    fi
+
+    if [ "$VERBOSE" = true ]; then
+      echo "$MERGE_OUTPUT"
+    fi
+    echo "  Conflicts in excluded dirs only — resolved."
+  else
+    if [ "$VERBOSE" = true ]; then
+      echo "$MERGE_OUTPUT"
+    fi
+  fi
+
+  # If MERGE_HEAD doesn't exist, the branch was already up to date.
+  # Still push and re-tag in case a previous run committed but didn't finish.
+  if [ ! -f "$GIT_DIR/MERGE_HEAD" ]; then
+    echo "  Already up to date — pushing and re-tagging..."
+    git push origin "$TARGET"
+    BRANCH_TAG="${TARGET}-baseline"
+    git tag -d "$BRANCH_TAG" 2>/dev/null || true
+    git push origin ":refs/tags/$BRANCH_TAG" 2>/dev/null || true
+    git tag "$BRANCH_TAG"
+    git push origin "$BRANCH_TAG"
+    echo "  Pushed and tagged ($BRANCH_TAG)."
+    continue
+  fi
+
+  # Restore each excluded directory to its pre-merge state on this branch.
+  # Always clear the index for the dir first — this resolves any conflict
+  # markers, staged deletions, or new files main introduced in those paths.
+  for DIR in "${EXCLUDED[@]}"; do
+    git rm -r --cached --ignore-unmatch "$DIR" > /dev/null 2>&1 || true
+    if git rev-parse "HEAD:$DIR" > /dev/null 2>&1; then
+      # Dir exists on this branch — restore index and working tree from HEAD.
+      git checkout HEAD -- "$DIR"
+      # Remove any untracked files main left behind in the working tree.
+      git clean -fd "$DIR" > /dev/null 2>&1 || true
+      echo "  Preserved $DIR"
+    else
+      # Dir was not on this branch — remove working tree remnants from main.
+      rm -rf "$DIR"
+      echo "  Removed $DIR (not present on $TARGET)"
+    fi
+  done
+
+  # If nothing remains staged after the exclusions, skip the commit.
+  if git diff --cached --quiet; then
+    echo "  No changes remain after exclusions — skipping commit."
+    git merge --abort
+  else
+    git commit -m "Merge '$SOURCE' into '$TARGET' (excluding skill/rules dirs)"
+    echo "  Committed."
+    git push origin "$TARGET"
+    BRANCH_TAG="${TARGET}-baseline"
+    git tag -d "$BRANCH_TAG" 2>/dev/null || true
+    git push origin ":refs/tags/$BRANCH_TAG" 2>/dev/null || true
+    git tag "$BRANCH_TAG"
+    git push origin "$BRANCH_TAG"
+    echo "  Pushed and tagged ($BRANCH_TAG)."
+  fi
+done
+
+# ── Return to the original branch ─────────────────────────────────────────────
+git checkout "$ORIGINAL" --quiet
+echo ""
+echo "Done."

@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# diff-from-main
+#
+# Reports how each target branch differs from `main`, ignoring the
+# skill/rules directories that are expected to diverge per-branch.
+#
+# Usage:
+#   ./diff-from-main [branch1 branch2 ...]
+#
+# Examples:
+#   ./diff-from-main
+#   ./diff-from-main sf-skills-test
+#
+set -euo pipefail
+
+SOURCE="main"
+EXCLUDED=(".claude/skills" ".a4drules")
+
+# ── Resolve target branches ───────────────────────────────────────────────────
+if [ $# -gt 0 ]; then
+  TARGETS=("$@")
+else
+  TARGETS=(
+    "sf-skills-test"
+    "agentforce-adlc-test"
+    "agentforce-dx-test"
+  )
+fi
+
+# ── Verify source and target branches exist locally ─────────────────────────
+if ! git rev-parse --verify "$SOURCE" > /dev/null 2>&1; then
+  echo "Error: source branch '$SOURCE' does not exist locally."
+  exit 1
+fi
+
+MISSING=()
+for TARGET in "${TARGETS[@]}"; do
+  if ! git rev-parse --verify "$TARGET" > /dev/null 2>&1; then
+    MISSING+=("$TARGET")
+  fi
+done
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo "Error: the following target branches do not exist locally:"
+  for B in "${MISSING[@]}"; do
+    echo "  - $B"
+  done
+  exit 1
+fi
+
+# ── Build exclude pathspec ──────────────────────────────────────────────────
+PATHSPEC=()
+for DIR in "${EXCLUDED[@]}"; do
+  PATHSPEC+=(":(exclude)$DIR")
+done
+
+# ── Analyze each target branch ──────────────────────────────────────────────
+echo "Comparing $SOURCE → target branches"
+echo "Excluded dirs: ${EXCLUDED[*]}"
+echo ""
+
+ALL_IN_SYNC=true
+
+for TARGET in "${TARGETS[@]}"; do
+  SOURCE_HASH=$(git rev-parse --short "$SOURCE")
+  TARGET_HASH=$(git rev-parse --short "$TARGET")
+  MERGE_BASE=$(git merge-base "$SOURCE" "$TARGET")
+  MERGE_BASE_SHORT=$(git rev-parse --short "$MERGE_BASE")
+
+  # Commits on main not yet in the target branch.
+  BEHIND_COUNT=$(git rev-list --count "$TARGET".."$SOURCE")
+  # Commits on the target branch not on main (excluding merge commits from
+  # prior merge-from-main runs so we only surface real divergence).
+  AHEAD_COUNT=$(git rev-list --count --no-merges "$SOURCE".."$TARGET")
+
+  # File-level diff excluding skill/rules dirs.
+  CHANGED_FILES=$(git diff --name-only "$TARGET"..."$SOURCE" -- . "${PATHSPEC[@]}" 2>/dev/null || true)
+  FILE_COUNT=0
+  if [ -n "$CHANGED_FILES" ]; then
+    FILE_COUNT=$(echo "$CHANGED_FILES" | wc -l | tr -d ' ')
+  fi
+
+  # ── Print branch summary ────────────────────────────────────────────────
+  if [ "$FILE_COUNT" -eq 0 ]; then
+    STATUS="no differences"
+  else
+    STATUS="$FILE_COUNT file(s) differ"
+    ALL_IN_SYNC=false
+  fi
+
+  echo "── $TARGET ($STATUS) ──"
+  echo "  $SOURCE $SOURCE_HASH  ←  merge-base $MERGE_BASE_SHORT  →  $TARGET $TARGET_HASH"
+  echo "  Behind main: $BEHIND_COUNT commit(s) | Ahead (non-merge): $AHEAD_COUNT commit(s)"
+
+  if [ "$FILE_COUNT" -gt 0 ]; then
+    echo "  Changed files (excluding skill/rules dirs): $FILE_COUNT"
+    echo "$CHANGED_FILES" | sed 's/^/    /'
+  else
+    echo "  No file differences outside excluded dirs."
+  fi
+
+  echo ""
+done
+
+# ── Summary ──────────────────────────────────────────────────────────────────
+if [ "$ALL_IN_SYNC" = true ]; then
+  echo "No file differences found outside excluded dirs."
+else
+  echo "File differences detected. Run ./merge-from-main to reconcile."
+fi
