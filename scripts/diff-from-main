@@ -2,28 +2,28 @@
 # diff-from-main
 #
 # Reports how each target branch differs from `main`, ignoring the
-# skill/rules directories that are expected to diverge per-branch.
+# demo-specific paths that are expected to diverge per-branch.
 #
 # Usage:
 #   ./scripts/diff-from-main [branch1 branch2 ...]
 #
 # Examples:
 #   ./scripts/diff-from-main
-#   ./scripts/diff-from-main sf-skills-test
+#   ./scripts/diff-from-main afdx-booth-demo
 #
 set -euo pipefail
 
 SOURCE="main"
-EXCLUDED=(".claude/skills" ".a4drules")
+EXCLUDED=("force-app" "scripts/js/build-durable-org-env.mjs" "scripts/js/build-scratch-env.mjs")
 
 # ── Resolve target branches ───────────────────────────────────────────────────
 if [ $# -gt 0 ]; then
   TARGETS=("$@")
 else
   TARGETS=(
-    "sf-skills-test"
-    "agentforce-adlc-test"
-    "agentforce-dx-test"
+    "afdx-booth-demo"
+    "afdx-theater-demo"
+    "afdx-breakout-demo"
   )
 fi
 
@@ -55,7 +55,7 @@ done
 
 # ── Analyze each target branch ──────────────────────────────────────────────
 echo "Comparing $SOURCE → target branches"
-echo "Excluded dirs: ${EXCLUDED[*]}"
+echo "Excluded paths: ${EXCLUDED[*]}"
 echo ""
 
 ALL_IN_SYNC=true
@@ -72,7 +72,7 @@ for TARGET in "${TARGETS[@]}"; do
   # prior merge-from-main runs so we only surface real divergence).
   AHEAD_COUNT=$(git rev-list --count --no-merges "$SOURCE".."$TARGET")
 
-  # File-level diff excluding skill/rules dirs.
+  # File-level diff excluding demo-specific paths.
   CHANGED_FILES=$(git diff --name-only "$TARGET"..."$SOURCE" -- . "${PATHSPEC[@]}" 2>/dev/null || true)
   FILE_COUNT=0
   if [ -n "$CHANGED_FILES" ]; then
@@ -92,10 +92,10 @@ for TARGET in "${TARGETS[@]}"; do
   echo "  Behind main: $BEHIND_COUNT commit(s) | Ahead (non-merge): $AHEAD_COUNT commit(s)"
 
   if [ "$FILE_COUNT" -gt 0 ]; then
-    echo "  Changed files (excluding skill/rules dirs): $FILE_COUNT"
+    echo "  Changed files (excluding demo-specific paths): $FILE_COUNT"
     echo "$CHANGED_FILES" | sed 's/^/    /'
   else
-    echo "  No file differences outside excluded dirs."
+    echo "  No file differences outside excluded paths."
   fi
 
   echo ""
@@ -103,7 +103,7 @@ done
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 if [ "$ALL_IN_SYNC" = true ]; then
-  echo "No file differences found outside excluded dirs."
+  echo "No file differences found outside excluded paths."
 else
   echo "File differences detected. Run ./scripts/merge-from-main to reconcile."
 fi
