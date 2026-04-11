@@ -73,7 +73,7 @@ export async function buildScratchEnv() {
   tr.ctx   = {};
 
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Reset all tracked files to the baseline tag before anything else runs.
   // This guarantees a clean, known state regardless of what the working tree
   // looks like when the script is invoked.
@@ -81,7 +81,7 @@ export async function buildScratchEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Remove any empty directories left over from the baseline reset.
   cleanEmptyDirs(tr);
   //*/
