@@ -5,11 +5,11 @@
 # skill/rules directories that are expected to diverge per-branch.
 #
 # Usage:
-#   ./diff-from-main [branch1 branch2 ...]
+#   ./scripts/diff-from-main [branch1 branch2 ...]
 #
 # Examples:
-#   ./diff-from-main
-#   ./diff-from-main sf-skills-test
+#   ./scripts/diff-from-main
+#   ./scripts/diff-from-main sf-skills-test
 #
 set -euo pipefail
 
@@ -105,5 +105,5 @@ done
 if [ "$ALL_IN_SYNC" = true ]; then
   echo "No file differences found outside excluded dirs."
 else
-  echo "File differences detected. Run ./merge-from-main to reconcile."
+  echo "File differences detected. Run ./scripts/merge-from-main to reconcile."
 fi

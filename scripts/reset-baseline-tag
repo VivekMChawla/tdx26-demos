@@ -8,7 +8,7 @@
 # This matches the convention used by the setup script.
 #
 # Usage:
-#   ./reset-baseline-tag
+#   ./scripts/reset-baseline-tag
 #
 set -euo pipefail
 

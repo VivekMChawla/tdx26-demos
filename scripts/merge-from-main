@@ -6,13 +6,13 @@
 # target branch — those directories are never touched by the merge.
 #
 # Usage:
-#   ./merge-from-main [--verbose] [branch1 branch2 ...]
+#   ./scripts/merge-from-main [--verbose] [branch1 branch2 ...]
 #
 # Examples:
-#   ./merge-from-main
-#   ./merge-from-main --verbose
-#   ./merge-from-main sf-skills-test
-#   ./merge-from-main --verbose sf-skills-test
+#   ./scripts/merge-from-main
+#   ./scripts/merge-from-main --verbose
+#   ./scripts/merge-from-main sf-skills-test
+#   ./scripts/merge-from-main --verbose sf-skills-test
 #
 set -euo pipefail
 
