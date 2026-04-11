@@ -1,0 +1,401 @@
+/*
+ * Copyright (c) 2026, Salesforce, Inc.
+ * SPDX-License-Identifier: Apache-2
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @file          sfdx-falcon/task-runner/sfdx-task.mjs
+ * @author        Vivek M. Chawla <@VivekMChawla> (original 2023)
+ * @summary       Wraps a `Listr` task with helpful tools to work with Salesforce CLI commands.
+ * @description   Makes it easier to work with `Listr` tasks when automating Salesforce CLI commands.
+ * @version       1.0.0
+ * @license       Apache-2.0
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+// Import External Libraries & Modules
+import { $, chalk }                       from "zx";
+import { isEmpty }                        from "lodash-es";
+
+// Import Internal Classes & Functions
+import { SfdxFalconError }                from "../error/index.mjs";
+import { SfdxFalconDebug }                from "../debug/index.mjs";
+import { throwOnNullInvalidObject, 
+         throwOnEmptyNullInvalidString, 
+         throwOnEmptyNullInvalidObject,
+         throwOnInvalidFunction}          from "../validators/type-validator.mjs";
+import { isSfCliCommandString }           from "../utilities/sfdx.mjs";
+import { stdioToJson }                    from "../utilities/json.mjs";
+import { sleep }                          from "../utilities/general.mjs";
+
+// Set the File Local Debug Namespace
+const dbgNs = 'TaskRunner:SfdxTask';
+SfdxFalconDebug.msg(`${dbgNs}`, `Debugging initialized for ${dbgNs}`);
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @class       SfdxTask
+ * @description Defines a CLI task that specifically uses the `sf` or `sfdx` base command.
+ * @public
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export class SfdxTask {
+  /**
+   * @type      {String}
+   * @summary   Title of the SfdxTask. Appears in the `Listr` task list while tasks are running.
+   */
+  title = null;
+  /**
+   * @type      {String}
+   * @summary   The `sf` or `sfdx` command that will be executed when this task is run.
+   */
+  commandString = null;
+  /**
+   * @type      {Object}
+   * @summary   Options object for this `SfdxTask`. Not directly transferrable to `Listr` options.
+   */
+  options = null;
+  /**
+   * @type        {function}
+   * @summary     Async handler function that's executed upon successful command execution.
+   * @description The specified handler function should take three arguments.
+   *              1. `processPromise` for the result returned by `ZX` when the command was run.
+   *              2. `ctx` for the `Listr` context object.
+   *              3. `task` for the `Listr` task that contained the command. 
+   * @example
+   * ```
+   * this.onSuccess = async (processPromise, ctx, task) => {
+   *   // Implementation
+   * }
+   * ```
+   */
+  onSuccess = null;
+  /**
+   * @type        {function}
+   * @summary     Async handler function that's executed upon unsuccessful command execution.
+   * @description The specified handler function should take three arguments.
+   *              1. `processError` for the result returned by `ZX` when the command failed.
+   *              2. `ctx` for the `Listr` context object.
+   *              3. `task` for the `Listr` task that contained the command. 
+   * @example
+   * ```
+   * this.onError = async (processError, ctx, task) => {
+   *   // Implementation
+   * }
+   * ```
+   */
+  onError = null;
+  /**
+   * @type        {boolean|function}
+   * @summary     Prevents a caught CLI error from being re-thrown to the `Listr` task engine.
+   * @description Controls whether errors caught from CLI command execution are re-thrown to
+   *              the `Listr` task engine. Does not stop execution of the `onError` handler
+   *              function (if defined).
+   *
+   *              Accepts a `boolean` or a `function`. When a function is provided, it is called
+   *              at runtime with `(processError, ctx, task)` and must return `true` to suppress
+   *              the error or `false` to re-throw it. This enables conditional error handling
+   *              based on the error content (e.g. exit code, stderr message).
+   * @example
+   * ```
+   * // Boolean: always suppress errors.
+   * {suppressErrors: true}
+   *
+   * // Function: suppress only "already assigned" errors.
+   * {suppressErrors: (err) => err.stdout?.includes('already assigned')}
+   * ```
+   */
+  suppressErrors = null;
+  /**
+   * @type        {boolean}
+   * @summary     Renders `stderr` and `stdout` before throwing to the `Listr` task engine.
+   * @description When `true` and the error is NOT suppressed, renders the output from `stderr`
+   *              and `stdout` immediately following execution of the `onError` handler function
+   *              (if defined), and right before throwing to the `Listr` task engine.
+   */
+  renderStdioOnError = null;
+  /**
+   * @type        {boolean}
+   * @summary     Indicates the `Listr` task engine should run this task concurrently with other
+   *              tasks marked as concurrent.
+   */
+  concurrent = null;
+  /**
+   * @type        {Object|null}
+   * @summary     Retry configuration for this `SfdxTask`.
+   * @description When provided, the task will retry its CLI command on failure.
+   *              Accepts an object with the following properties:
+   *              - `maxAttempts` {number} Total number of execution attempts (including the first).
+   *                Must be >= 1. Default: 1 (no retry).
+   *              - `delayMs` {number} Milliseconds to wait between retry attempts. Default: 5000.
+   *              - `retryIf` {function} Optional. Called with `(processError, ctx, task)` after each
+   *                failure. Must return `true` to allow retry or `false` to stop retrying immediately.
+   *                When omitted, all errors are eligible for retry.
+   */
+  retry = null;
+  /**
+   * @summary     A `Listr` task constructed using the values passed to the `constructor`.
+   */
+  lisrTask = null;
+
+  //───────────────────────────────────────────────────────────────────────────┐
+  /**
+   * @constructor
+   * @param       {String} title      Required. The text that will appear in
+   *                                  the task list while the tasks are running.
+   * @param       {String} commandString  Required. The `sf` or `sfdx` command
+   *                                      that will be executed via ZX.
+   * @param       {Object} [options]  Optional. Object containing options for 
+   *                                  this task. Not directly trasnsferrable to
+   *                                  `Listr` task options.
+   * @returns     {SfdxTask}
+   * @description Instantiates an `SfdxTask` object which wraps a `Listr` task
+   *              object and adds specialized logic for processing the results
+   *              from `sf` and `sfdx` CLI commands.
+   * @public
+   * @example
+   * ```
+   * const sfdxTask = new SfdxTask(
+   *   `Delete existing scratch org`,
+   *   `sf org delete scratch -p -o ${devOrgAlias}`,
+   *   {suppressErrors: false}
+   * );
+   * ```
+   */
+  //───────────────────────────────────────────────────────────────────────────┘
+  constructor(title, commandString, options={}) {
+    // Set local debug namespace.
+    const localDbgNs = `${dbgNs}:constructor`;
+
+    // Debug arguments.
+    SfdxFalconDebug.msg(`${localDbgNs}`, `Arguments Upon Entering the Constructor`);
+    SfdxFalconDebug.str(`${localDbgNs}:title`, title);
+    SfdxFalconDebug.str(`${localDbgNs}:commandString`, commandString);
+    SfdxFalconDebug.obj(`${localDbgNs}:options`, options);
+
+    // Validate arguments.
+    throwOnEmptyNullInvalidString(title,          `${localDbgNs}`, 'title');
+    throwOnEmptyNullInvalidString(commandString,  `${localDbgNs}`, 'commandString');
+    throwOnNullInvalidObject     (options,        `${localDbgNs}`, 'options', true);
+    if (options.onSuccess) throwOnInvalidFunction(options.onSuccess,  `${localDbgNs}`, 'options.onSuccess');
+    if (options.onError)   throwOnInvalidFunction(options.onError,    `${localDbgNs}`, 'options.onError');
+    if (options.retry) {
+      throwOnEmptyNullInvalidObject(options.retry, `${localDbgNs}`, 'options.retry');
+      if (options.retry.retryIf) throwOnInvalidFunction(options.retry.retryIf, `${localDbgNs}`, 'options.retry.retryIf');
+    }
+    if (isSfCliCommandString(commandString) !== true) {
+      throw new SfdxFalconError(`Invalid Command String: |-->${commandString}<--|   SfdxTask objects can only be constructed with 'sf' or 'sfdx' command strings. For other commands, please construct a CliTask object.`,
+                                `Invalid SFDX Command String`,
+                                `${localDbgNs}`);
+    }
+
+    // Initialze member variables.
+    this.title                = title;
+    this.commandString        = commandString.trim() + ' --json'; // Always request JSON output
+    this.options              = {...{
+                                  suppressErrors: false,
+                                  renderStdioOnError: false,
+                                  concurrent: false,
+                                  onSuccess: null,
+                                  onError: null
+                                },
+                                ...options};
+    this.onSuccess            = this.options.onSuccess;
+    this.onError              = this.options.onError;
+    this.suppressErrors       = typeof this.options.suppressErrors === 'function'  // Preserve functions for conditional suppression.
+                                ? this.options.suppressErrors                     // Keep the function as-is.
+                                : this.options.suppressErrors ? true : false;     // Coerce booleans: ensure "truthy" values become TRUE.
+    this.renderStdioOnError   = this.options.renderStdioOnError ? true : false;   // Ensure "truthy" values become TRUE.
+    this.concurrent           = this.options.concurrent ? true : false;           // Ensure "truthy" values become TRUE.
+    this.retry                = options.retry
+                                ? {
+                                    maxAttempts: Math.max(1, Math.floor(options.retry.maxAttempts ?? 1)),
+                                    delayMs:     Math.max(0, Math.floor(options.retry.delayMs ?? 5000)),
+                                    retryIf:     typeof options.retry.retryIf === 'function'
+                                                  ? options.retry.retryIf
+                                                  : null
+                                  }
+                                : null;
+    this.lisrTask             = buildListrTask(this);
+
+    // Debug member variables.
+    SfdxFalconDebug.msg(`${localDbgNs}`, `Instance Members After Initialization`);
+    SfdxFalconDebug.str(`${localDbgNs}:this.title`,           this.title);
+    SfdxFalconDebug.str(`${localDbgNs}:this.commandString`,   this.commandString);
+    SfdxFalconDebug.obj(`${localDbgNs}:this.options`,         this.options);
+    SfdxFalconDebug.obj(`${localDbgNs}:this.onSuccess`,       this.onSuccess);
+    SfdxFalconDebug.obj(`${localDbgNs}:this.onError`,         this.onError);
+    SfdxFalconDebug.obj(`${localDbgNs}:this.suppressErrors`,  this.suppressErrors);
+    SfdxFalconDebug.obj(`${localDbgNs}:this.retry`,            this.retry);
+    SfdxFalconDebug.obj(`${localDbgNs}:this.lisrTask`,        this.lisrTask);
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    buildListrTask
+ * @param       {SfdxTask} sfdxTask   Required. The SfdxTask used to build a `Listr` task.
+ * @returns     {ListrTask}           A fully-formed `Listr` task object.
+ * @summary     Takes an `SfdxTask` and builds a `Listr` task from it.
+ * @description Creates a single `Listr` task using the information from a an `SfdxTask` object.
+ * @private
+ */
+// ────────────────────────────────────────────────────────────────────────────────────────────────┘
+function buildListrTask(sfdxTask) {
+  // Set local debug namespace.
+  const localDbgNs = `${dbgNs}:buildListrTask`;
+
+  // Validate and debug arguments.
+  throwOnEmptyNullInvalidObject(sfdxTask, `${localDbgNs}:sfdxTask`, sfdxTask, true);
+  SfdxFalconDebug.obj(`${localDbgNs}:sfdxTask`, sfdxTask);
+
+  // Define the Listr task.
+  const newListrTask = {
+    title:        sfdxTask.title,
+    concurrent:   sfdxTask.concurrent,
+    task: async (ctx, task) => {
+      SfdxFalconDebug.str(`ASYNC:${localDbgNs}`, sfdxTask.commandString, `About to Execute SFDX Command String:\n`);
+
+      // Determine retry parameters. Default to a single attempt (no retry).
+      const maxAttempts = sfdxTask.retry?.maxAttempts ?? 1;
+      const delayMs     = sfdxTask.retry?.delayMs ?? 0;
+      const retryIf     = sfdxTask.retry?.retryIf ?? null;
+      const originalTitle = sfdxTask.title;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        // Use ZX to execute the Salesforce CLI command.
+        try {
+          const processPromise = await $`${sfdxTask.commandString}`;
+
+          // Convert any JSON found in stdout/stderr buffers to actual objects.
+          processPromise.stderrJson = stdioToJson(processPromise.stderr);
+          processPromise.stdoutJson = stdioToJson(processPromise.stdout);
+
+          // Debug.
+          SfdxFalconDebug.msg(`ASYNC:${localDbgNs}`, `Salesforce CLI Command Execution Success`);
+          SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processPromise, `processPromise:`);
+          SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processPromise.stdoutJson, `STDOUT_JSON:`);
+          SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processPromise.stderrJson, `STDERR_JSON:`);
+          SfdxFalconDebug.str(`ASYNC:${localDbgNs}`, processPromise.stdout, `STDOUT:`);
+          SfdxFalconDebug.str(`ASYNC:${localDbgNs}`, processPromise.stderr, `STDERR:`);
+
+          // If this was a retry that succeeded, restore the original title.
+          if (attempt > 1) {
+            task.title = originalTitle;
+            SfdxFalconDebug.msg(`ASYNC:${localDbgNs}`, `Command succeeded on attempt ${attempt} of ${maxAttempts}`);
+          }
+
+          // Call success handler, if present.
+          if (typeof sfdxTask.onSuccess === 'function') {
+            await sfdxTask.onSuccess(processPromise, ctx, task);
+          }
+
+          // Success -- exit the retry loop.
+          return;
+
+        } catch (processError) {
+          SfdxFalconDebug.msg(`ASYNC:${localDbgNs}`, `Salesforce CLI Command Execution Failure (attempt ${attempt} of ${maxAttempts})`);
+          SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processError, `processError:`);
+
+          // Convert any JSON found in stdout/stderr buffers to actual objects.
+          // Done early so parsed JSON is available to retryIf, onError, and suppressErrors handlers.
+          processError.stderrJson = stdioToJson(processError.stderr);
+          processError.stdoutJson = stdioToJson(processError.stdout);
+
+          // Determine if this error is eligible for retry.
+          const hasAttemptsRemaining = attempt < maxAttempts;
+          const isRetryEligible = hasAttemptsRemaining &&
+            (retryIf === null || retryIf(processError, ctx, task) === true);
+
+          if (isRetryEligible) {
+            // Log the retry decision and update the task title.
+            SfdxFalconDebug.msg(`ASYNC:${localDbgNs}`,
+              `Retrying in ${delayMs}ms (attempt ${attempt} of ${maxAttempts} failed)`);
+            task.title = `${originalTitle} [retry ${attempt}/${maxAttempts - 1} in ${Math.round(delayMs / 1000)}s...]`;
+
+            // Wait before retrying.
+            await sleep(delayMs);
+
+            // Continue to the next iteration of the retry loop.
+            continue;
+          }
+
+          // All retries exhausted or retryIf returned false.
+          // Fall through to existing error handling.
+          if (attempt > 1) {
+            SfdxFalconDebug.msg(`ASYNC:${localDbgNs}`,
+              `All ${maxAttempts} attempts exhausted. Proceeding to error handling.`);
+            task.title = `${originalTitle} [FAILED after ${attempt} attempts]`;
+          }
+
+          // Call error handler, if present.
+          if (typeof sfdxTask.onError === 'function') {
+            await sfdxTask.onError(processError, ctx, task);
+          }
+
+          // Determine whether to suppress this error.
+          // When suppressErrors is a function, call it with the error context to decide at runtime.
+          const shouldSuppress = typeof sfdxTask.suppressErrors === 'function'
+            ? sfdxTask.suppressErrors(processError, ctx, task)
+            : sfdxTask.suppressErrors;
+
+          // Throw error if errors are not suppressed for this task.
+          if (shouldSuppress === false) {
+            // Optionally render STDERR and STDOUT.
+            if (sfdxTask.renderStdioOnError === true) {
+              SfdxFalconDebug.debugMessage(`SfdxTask:ERROR`,    chalk.red(`Salesforce CLI command terminated with errors (Exit Code=${processError.exitCode}).`) +
+                                                                `\nThe command and the contents of STDERR and STDOUT are rendered below.`);
+              SfdxFalconDebug.debugString(`SfdxTask:COMMAND`,   sfdxTask.commandString);
+              if (isEmpty(processError.stderrJson)) {
+                SfdxFalconDebug.debugString(`SfdxTask:STDERR`,  processError.stderr);
+              } else {
+                SfdxFalconDebug.debugObject(`SfdxTask:STDERR`,  processError.stderrJson);
+              }
+              if (isEmpty(processError.stdoutJson)) {
+                SfdxFalconDebug.debugString(`SfdxTask:STDOUT`,  processError.stdout);
+              } else {
+                SfdxFalconDebug.debugObject(`SfdxTask:STDOUT`,  processError.stdoutJson);
+              }
+              // Render error.data if present (CLI sometimes wraps details here).
+              const errorData = processError.stdoutJson?.data ?? processError.stderrJson?.data;
+              if (!isEmpty(errorData)) {
+                SfdxFalconDebug.debugObject(`SfdxTask:ERROR_DATA`, errorData);
+              }
+            }
+
+            // Debug.
+            SfdxFalconDebug.msg(`ASYNC:${localDbgNs}`, `Errors are not suppressed for this SfdxTask`);
+            SfdxFalconDebug.str(`ASYNC:${localDbgNs}`, `CommandString:\n${sfdxTask.commandString}`);
+            SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processError.stderr, `STDERR:`);
+            SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processError.stdout, `STDOUT:`);
+            SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processError.stderrJson, `STDERR_JSON:`);
+            SfdxFalconDebug.obj(`ASYNC:${localDbgNs}`, processError.stdoutJson, `STDOUT_JSON:`);
+
+            throw new SfdxFalconError(`Salesforce CLI command execution failed.`,
+                                      `SFDX CLI Command Failed`,
+                                      `${localDbgNs}`,
+                                      processError);
+          }
+
+          // Error was suppressed -- exit the retry loop.
+          return;
+        }
+      }
+    }
+  }
+  SfdxFalconDebug.obj(`${localDbgNs}:newListrTask`, newListrTask);
+  return newListrTask;
+}
