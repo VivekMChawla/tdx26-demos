@@ -27,7 +27,7 @@
  * @version       1.0.0
  * @license       Apache-2.0
  */
-//──────────────────────────────────────────────────────────────────��──────────────────────────────┘
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
 // Import External Libraries & Modules
 import { agentUsername, agentNickname, baselineTag,
          alternativeBrowser, deploymentStatusPage,
