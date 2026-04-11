@@ -1,0 +1,48 @@
+# Agent Test Specification for Local_Info_Agent
+# Creates an AiEvaluationDefinition in your org for agent testing.
+# Usage: sf agent test create --spec specs/Local_Info_Agent-testSpec.yaml
+name: Local Info Agent Tests
+description: Functional tests for the Local Info Agent at Coral Cloud Resort.
+subjectType: AGENT
+subjectName: Local_Info_Agent
+testCases:
+  - utterance: What's the weather like today?
+    expectedTopic: local_weather
+    expectedActions:
+      - check_weather
+    expectedOutcome: The agent should provide a forecast with a temperature range
+      for Coral Cloud Resort. The response should include both Celsius and Fahrenheit.
+    metrics:
+      - coherence
+      - conciseness
+      - output_latency_milliseconds
+  - utterance: I like movies. What's showing nearby?
+    expectedTopic: local_events
+    expectedActions:
+      - check_events
+    expectedOutcome: The agent should provide information about movie events happening
+      in Port Aurelia.
+    metrics:
+      - coherence
+      - conciseness
+      - output_latency_milliseconds
+  - utterance: What events are happening around here?
+    expectedTopic: local_events
+    expectedActions: []
+    expectedOutcome: Because the user has not indicated their interests, the agent
+      should politely ask about the guest's interests before looking up events.
+      The agent should NOT call check_events without knowing the guest's interests first.
+    metrics:
+      - coherence
+      - output_latency_milliseconds
+  - utterance: When does the spa open?
+    expectedTopic: resort_hours
+    expectedActions:
+      - get_resort_hours
+    expectedOutcome: The agent should provide opening and closing times for the spa.
+      The agent should mention that a reservation is required and provide the phone
+      number (555) 867-5309.
+    metrics:
+      - coherence
+      - conciseness
+      - output_latency_milliseconds
