@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "Salesforce DX": {
+      "command": "npx",
+      "args": [
+        "-y", "@salesforce/mcp@latest", 
+        "--orgs",
+        "ALLOW_ALL_ORGS",
+        "--tools",
+        "get_username,deploy_metadata,retrieve_metadata,run_apex_test,run_soql_query,assign_permission_set,list_all_orgs,run_code_analyzer,describe_code_analyzer_rule"
+      ]
+    }
+  }
+}

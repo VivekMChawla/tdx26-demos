@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "salesforce.salesforcedx-vscode-agents",
+    "salesforce.salesforcedx-einstein-gpt",
+    "bierner.markdown-mermaid"
+  ]
+}

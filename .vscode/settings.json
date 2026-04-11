@@ -1,0 +1,23 @@
+{
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/.sfdx": true
+  },
+  "salesforcedx-vscode-core.show-cli-success-msg": false,
+  "salesforcedx-vscode-slds.basic.mobileValidation": false,
+  "salesforcedx-vscode-slds.basic.invalid": false,
+  "salesforcedx-vscode-slds.enabled": false,
+  "workbench.editor.pinnedTabsOnSeparateRow": true,
+  "markdown.preview.doubleClickToSwitchToEditor": false,
+  "markdown.preview.scrollEditorWithPreview": false,
+  "markdown.preview.scrollPreviewWithEditor": false,
+  "xml.preferences.showSchemaDocumentationType": "none",
+  "salesforce.einsteinForDevelopers.advanced": {
+      "sds-model": "Claude-4.5-Sonnet",
+      "trace": { // logs to "trace.md"
+          "request": false,
+          "response": false  
+      },
+  }
+}
