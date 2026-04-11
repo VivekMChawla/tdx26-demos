@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# reset-baseline-tag
+#
+# Moves the baseline tag for the current branch to the current commit and
+# propagates the change to the remote repo.
+#
+# The tag name is derived from the current branch: <branch>-baseline.
+# This matches the convention used by the setup script.
+#
+# Usage:
+#   ./reset-baseline-tag
+#
+set -euo pipefail
+
+# ── Derive the tag name from the current branch ───────────────────────────────
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+TAG="${BRANCH}-baseline"
+
+# ── Require a clean working tree ─────────────────────────────────────────────
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Error: working tree has uncommitted changes. Commit or stash them first."
+  exit 1
+fi
+
+# ── Verify local branch and remote are at the same commit ────────────────────
+LOCAL_HASH=$(git rev-parse "$BRANCH")
+REMOTE_HASH=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "")
+
+if [ -z "$REMOTE_HASH" ]; then
+  echo "Error: no remote tracking branch found for '$BRANCH'."
+  echo "Push the branch to origin before resetting the baseline tag."
+  exit 1
+fi
+
+if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
+  echo "Error: local '$BRANCH' ($LOCAL_HASH) and origin/$BRANCH ($REMOTE_HASH) are not in sync."
+  echo "Manually ensure they point to the same commit before resetting the baseline tag."
+  exit 1
+fi
+
+# ── Capture current HEAD ─────────────────────────────────────────────────────
+HASH=$(git rev-parse HEAD)
+SHORT=$(git rev-parse --short HEAD)
+
+echo "Baseline tag : $TAG"
+echo "Current HEAD : $HASH"
+echo ""
+
+# ── Delete the existing local tag (ignore error if it doesn't exist yet) ─────
+git tag -d "$TAG" 2>/dev/null && echo "Deleted local tag '$TAG'" || echo "No existing local tag '$TAG' to delete"
+
+# ── Delete the existing remote tag (ignore error if it doesn't exist yet) ────
+git push origin ":refs/tags/$TAG" 2>/dev/null && echo "Deleted remote tag '$TAG'" || echo "No existing remote tag '$TAG' to delete"
+
+# ── Create the new tag at HEAD ────────────────────────────────────────────────
+git tag "$TAG"
+echo "Created tag '$TAG' at $SHORT"
+
+# ── Push the new tag to the remote ───────────────────────────────────────────
+git push origin "$TAG"
+echo ""
+echo "Done. Tag '$TAG' now points to $SHORT ($HASH)."
