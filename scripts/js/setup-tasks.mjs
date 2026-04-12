@@ -197,6 +197,41 @@ export function deployManifest(tr, title, manifestPath) {
 
 //─────────────────────────────────────────────────────────────────────────────────────────────────┐
 /**
+ * @function    enableSfAutocompleteForCodebuilder
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @returns     {void}
+ * @summary     Enables tab-autocomplete for the Salesforce CLI in bash.
+ * @description Writes the `sf autocomplete script bash` eval statement to
+ *              `/home/codebuilder/.bashrc.local` and sources `/home/codebuilder/.bashrc`
+ *              to activate it for the current session. The file is replaced on each run
+ *              to avoid duplicate entries.
+ *
+ *              **Safety guard:** This task only modifies the exact file
+ *              `/home/codebuilder/.bashrc.local`. If `/home/codebuilder` does not exist
+ *              (i.e. the script is not running inside CodeBuilder or Vibes IDE), the task
+ *              is skipped automatically.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function enableSfAutocompleteForCodebuilder(tr) {
+  const codebuilderHome = '/home/codebuilder';
+  const bashrcLocal     = `${codebuilderHome}/.bashrc.local`;
+  const bashrc          = `${codebuilderHome}/.bashrc`;
+  tr.addTask({
+    title: `Enable Salesforce CLI autocomplete`,
+    task: async (ctx, task) => {
+      if (!fs.existsSync(codebuilderHome)) {
+        task.skip('Not running in CodeBuilder/Vibes IDE — skipping');
+        return;
+      }
+      await $`rm -f ${bashrcLocal}`;
+      await $`printf "eval $(sf autocomplete script bash)" >> ${bashrcLocal}`;
+      await $`source ${bashrc}`.nothrow();
+    }
+  });
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
  * @function    importDataFiles
  * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
  * @param       {string} title - The display title for this task in the task runner output.
@@ -356,6 +391,38 @@ export function resetToBaseline(tr, baselineTag) {
   tr.addTask({
     title: `Reset tracked files to baseline (${baselineTag})`,
     task: async () => { await $`git checkout ${baselineTag} -- .`; }
+  });
+}
+
+//─────────────────────────────────────────────────────────────────────────────────────────────────┐
+/**
+ * @function    setGitGlobalDefaults
+ * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
+ * @param       {string} [name='Developer Benjamin'] - The default `user.name` to set if
+ *              no global value is currently configured.
+ * @param       {string} [email='benjamin@apprana.com'] - The default `user.email` to set if
+ *              no global value is currently configured.
+ * @returns     {void}
+ * @summary     Sets global Git `user.name` and `user.email` only if they are not already set.
+ * @description Checks whether `git config --global user.name` and `user.email` are currently
+ *              configured. For each value that is **not** set, writes the provided default.
+ *              Values that are already set are left untouched — this makes the task safe to
+ *              run in any environment without overwriting a developer's personal Git identity.
+ *
+ *              This task is intended for CodeBuilder and Vibes IDE environments where Git
+ *              config may not be pre-configured. The VS Code Git extension requires both
+ *              values to be set before it will function.
+ */
+//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+export function setGitGlobalDefaults(tr, name = 'Developer Benjamin', email = 'benjamin@apprana.com') {
+  tr.addTask({
+    title: `Set global Git user.name / user.email (if not already set)`,
+    task: async () => {
+      const currentName  = (await $`git config --get --global user.name`.nothrow()).stdout.trim();
+      const currentEmail = (await $`git config --get --global user.email`.nothrow()).stdout.trim();
+      if (!currentName)  { await $`git config --global user.name ${name}`; }
+      if (!currentEmail) { await $`git config --global user.email ${email}`; }
+    }
   });
 }
 
