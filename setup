@@ -3,6 +3,34 @@
 # Entry point for the AFDX setup script.
 # Installs Node dependencies on first run, then invokes the setup script.
 
+# ── Pre-flight: verify baseline tag is in sync with remote ───────────────────
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+BASELINE_TAG="${BRANCH}-baseline"
+LOCAL_TAG_HASH=$(git rev-parse "$BASELINE_TAG" 2>/dev/null || echo "")
+REMOTE_TAG_HASH=$(git ls-remote --tags origin "refs/tags/$BASELINE_TAG" 2>/dev/null | awk '{print $1}')
+
+if [ -z "$REMOTE_TAG_HASH" ]; then
+  echo "Error: baseline tag '$BASELINE_TAG' not found on remote."
+  echo "Please ensure you have checked out the correct branch for your demo."
+  echo "  Current branch: $BRANCH"
+  exit 1
+elif [ -z "$LOCAL_TAG_HASH" ]; then
+  echo "Error: baseline tag '$BASELINE_TAG' not found locally."
+  echo "  Remote: $REMOTE_TAG_HASH"
+  echo ""
+  echo "Run this command to sync with the remote, then re-run setup:"
+  echo "  git pull --tags --force"
+  exit 1
+elif [ "$LOCAL_TAG_HASH" != "$REMOTE_TAG_HASH" ]; then
+  echo "Error: local tag '$BASELINE_TAG' is out of date."
+  echo "  Local:  $LOCAL_TAG_HASH"
+  echo "  Remote: $REMOTE_TAG_HASH"
+  echo ""
+  echo "Run this command to sync with the remote, then re-run setup:"
+  echo "  git pull --tags --force"
+  exit 1
+fi
+
 # Install dependencies if node_modules doesn't exist.
 if [ ! -d "./scripts/js/node_modules" ]; then
   echo "Initializing Setup..."
