@@ -39,6 +39,8 @@ import { isPermSetGroupNotUpdated }       from './sfdx-falcon/utilities/sfdx.mjs
 // Import Shared Task Definitions
 import { resetToBaseline,
          cleanEmptyDirs,
+         enableSfAutocompleteForCodebuilder,
+         setGitGlobalDefaults,
          deleteScratchOrg,
          createScratchOrg,
          openOrgPage,
@@ -84,6 +86,21 @@ export async function buildScratchEnv() {
   //*
   // Remove any empty directories left over from the baseline reset.
   cleanEmptyDirs(tr);
+  //*/
+  //───────────────────────────────────────────────────────────────────────────────────────────────┘
+  //───────────────────────────────────────────────────────────────────────────────────────────────┐
+  //*
+  // Enable Salesforce CLI autocomplete in CodeBuilder/Vibes IDE environments.
+  // Skipped automatically when not running in CodeBuilder.
+  enableSfAutocompleteForCodebuilder(tr);
+  //*/
+  //───────────────────────────────────────────────────────────────────────────────────────────────┘
+  //───────────────────────────────────────────────────────────────────────────────────────────────┐
+  //*
+  // Set global Git user.name and user.email if they are not already configured.
+  // Required by the VS Code Git extension. Skipped if values are already set,
+  // so it won't overwrite a developer's personal Git identity.
+  setGitGlobalDefaults(tr);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
