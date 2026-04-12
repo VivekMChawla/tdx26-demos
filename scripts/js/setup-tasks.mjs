@@ -417,9 +417,13 @@ export function resetToBaseline(tr, baselineTag) {
 export function setGitGlobalDefaults(tr, name = 'Developer Benjamin', email = 'benjamin@apprana.com') {
   tr.addTask({
     title: `Set global Git user.name / user.email (if not already set)`,
-    task: async () => {
+    task: async (ctx, task) => {
       const currentName  = (await $`git config --get --global user.name`.nothrow()).stdout.trim();
       const currentEmail = (await $`git config --get --global user.email`.nothrow()).stdout.trim();
+      if (currentName && currentEmail) {
+        task.skip(`Already set — ${currentName} <${currentEmail}>`);
+        return;
+      }
       if (!currentName)  { await $`git config --global user.name ${name}`; }
       if (!currentEmail) { await $`git config --global user.email ${email}`; }
     }
