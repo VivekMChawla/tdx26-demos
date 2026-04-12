@@ -13,6 +13,9 @@ if [ -z "$REMOTE_TAG_HASH" ]; then
   echo "Error: baseline tag '$BASELINE_TAG' not found on remote."
   echo "Please ensure you have checked out the correct branch for your demo."
   echo "  Current branch: $BRANCH"
+  echo ""
+  echo "Available branches:"
+  git --no-pager branch --format='  %(refname:short)'
   exit 1
 elif [ -z "$LOCAL_TAG_HASH" ]; then
   echo "Error: baseline tag '$BASELINE_TAG' not found locally."
