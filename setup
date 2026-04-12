@@ -14,8 +14,18 @@ if [ -z "$REMOTE_TAG_HASH" ]; then
   echo "Please ensure you have checked out the correct branch for your demo."
   echo "  Current branch: $BRANCH"
   echo ""
-  echo "Available branches:"
-  git --no-pager branch --format='  %(refname:short)'
+  # List remote branches that have a matching baseline tag on the remote.
+  REMOTE_TAGS=$(git ls-remote --tags origin 2>/dev/null | awk '{print $2}' | sed 's|refs/tags/||')
+  DEMO_BRANCHES=$(git ls-remote --heads origin 2>/dev/null | awk '{print $2}' | sed 's|refs/heads/||' | while read -r RB; do
+    echo "$REMOTE_TAGS" | grep -q "^${RB}-baseline$" && echo "  $RB"
+  done)
+  if [ -n "$DEMO_BRANCHES" ]; then
+    echo "Available demo branches:"
+    echo "$DEMO_BRANCHES"
+  else
+    echo "No demo branches with baseline tags found on the remote."
+    echo "Please contact the demo owner to resolve this issue."
+  fi
   exit 1
 elif [ -z "$LOCAL_TAG_HASH" ]; then
   echo "Error: baseline tag '$BASELINE_TAG' not found locally."
