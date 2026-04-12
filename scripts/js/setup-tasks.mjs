@@ -379,18 +379,25 @@ export function queryAgentUserProfileId(tr) {
  * @param       {TaskRunner} tr - The TaskRunner instance to add the task to.
  * @param       {string} baselineTag - The git tag to reset to (e.g. `'my-branch-baseline'`).
  * @returns     {void}
- * @summary     Resets all tracked files to the baseline tag.
- * @description Runs `git checkout <baselineTag> -- .` to restore every tracked file to the
- *              state captured by the baseline tag. This guarantees a clean, known starting
- *              state regardless of what the working tree looks like when the script is invoked.
+ * @summary     Resets the branch to the baseline tag.
+ * @description Runs `git reset --hard <baselineTag>` to move the branch pointer, reset the
+ *              index, and clean the working tree. This guarantees a clean, known starting
+ *              state regardless of what was committed or modified since the baseline was set.
+ *
+ *              **Important:** The `setup` shell script verifies that local and remote baseline
+ *              tags are in sync before the task runner starts. By the time this function runs,
+ *              the tag is already known to be valid and up to date.
+ *
  *              Typically the first task in any build sequence. Follow with {@link cleanEmptyDirs}
- *              to remove directories that become empty after the reset.
+ *              to remove untracked files and empty directories left after the reset.
  */
 //─────────────────────────────────────────────────────────────────────────────────────────────────┘
 export function resetToBaseline(tr, baselineTag) {
   tr.addTask({
-    title: `Reset tracked files to baseline (${baselineTag})`,
-    task: async () => { await $`git checkout ${baselineTag} -- .`; }
+    title: `Reset project files to baseline (${baselineTag})`,
+    task: async () => {
+      await $`git reset --hard ${baselineTag}`;
+    }
   });
 }
 
