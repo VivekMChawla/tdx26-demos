@@ -17,7 +17,7 @@
 set -euo pipefail
 
 SOURCE="main"
-EXCLUDED=("force-app" "scripts/js/build-durable-org-env.mjs" "scripts/js/build-scratch-env.mjs")
+EXCLUDED=("force-app" "scripts/js/build-durable-org-env.mjs" "scripts/js/build-scratch-env.mjs" "sfdx-project.json")
 ORIGINAL=$(git rev-parse --abbrev-ref HEAD)
 GIT_DIR=$(git rev-parse --git-dir)
 VERBOSE=false
