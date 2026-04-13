@@ -126,7 +126,7 @@ export async function buildScratchEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Open the "Deployment Status" page in the developer's non-default browser.
   openOrgPage(tr, deploymentStatusPage, alternativeBrowser);
   //*/

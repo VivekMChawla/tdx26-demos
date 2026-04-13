@@ -118,7 +118,7 @@ export async function buildDurableOrgEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Assign Space Station permissions to admin user before data import.
   assignPermSets(tr,
     `Assign "Space_Station_Permset" to admin user`,
@@ -126,7 +126,7 @@ export async function buildDurableOrgEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Import space station sample data (stations, resources, supplies).
   importDataPlan(tr,
     `Import space station sample data`,
@@ -134,7 +134,7 @@ export async function buildDurableOrgEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Assign Property Management permissions to admin user before data import.
   assignPermSets(tr,
     `Assign "Property_Management_Access" to admin user`,
@@ -142,7 +142,7 @@ export async function buildDurableOrgEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Import property manager sample data.
   importDataPlan(tr,
     `Import property manager sample data`,
