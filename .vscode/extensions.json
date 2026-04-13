@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "salesforce.salesforcedx-vscode-agents",
+    "salesforce.agent-script-language-client",
     "salesforce.salesforcedx-einstein-gpt",
     "bierner.markdown-mermaid"
   ]
