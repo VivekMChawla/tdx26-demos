@@ -18,96 +18,101 @@
 /**
  * @file          build-scratch-env.mjs
  * @author        Vivek M. Chawla <@VivekMChawla> (original 2023)
- * @summary       Implements a series of CLI commands that build a scratch org environment.
- * @description   Creates a new scratch org, deploys source, and configures users and permissions
- *                for the AFDX Pro-Code Testdrive project.
+ * @summary       Orchestrates scratch org setup for this demo branch.
+ * @description   Composes shared tasks from setup-tasks.mjs into the sequence needed
+ *                to create and configure a scratch org for this demo.
+ *                Edit this file to add, remove, or reorder tasks for your demo.
+ *                To disable a task block, remove the leading `/` from the `//*` line
+ *                so it becomes `/*`, which turns the block into a comment.
  * @version       1.0.0
  * @license       Apache-2.0
  */
 //─────────────────────────────────────────────────────────────────────────────────────────────────┘
 // Import External Libraries & Modules
-import { $, fs }               from "zx";
+import { agentUsername, agentNickname, baselineTag,
+         alternativeBrowser, deploymentStatusPage,
+         devOrgAlias, devOrgConfigFile }  from './setup.mjs';
+import { TaskRunner }                     from './sfdx-falcon/task-runner/index.mjs';
+import { SfdxFalconError }                from './sfdx-falcon/error/index.mjs';
+import { isPermSetGroupNotUpdated }       from './sfdx-falcon/utilities/sfdx.mjs';
 
-// Import Internal Classes & Functions
-import { agentUsername, alternativeBrowser, baselineTag, deploymentStatusPage,
-         devOrgAlias, devOrgConfigFile }
-                                from './setup.mjs';
-import { TaskRunner }           from './sfdx-falcon/task-runner/index.mjs';
-import { SfdxTask }             from './sfdx-falcon/task-runner/sfdx-task.mjs';
-import { SfdxFalconError }      from './sfdx-falcon/error/index.mjs';
-import { SfdxFalconDebug }      from './sfdx-falcon/debug/index.mjs';
-import { isDuplicatePermSetAssignment,
-         isPermSetGroupNotUpdated }
-                                from './sfdx-falcon/utilities/sfdx.mjs';
+// Import Shared Task Definitions
+import { resetToBaseline,
+         cleanEmptyDirs,
+         enableSfAutocompleteForCodebuilder,
+         setGitGlobalDefaults,
+         deleteScratchOrg,
+         createScratchOrg,
+         openOrgPage,
+         assignPermSets,
+         deployManifest,
+         importDataPlan,
+         queryAgentUserProfileId,
+         updateAgentUserJson,
+         createAgentUser,
+         setAgentBundleUser,
+         publishAgent,
+         activateAgent,
+         postSetupReset }                 from './setup-tasks.mjs';
 
-// Set the File Local Debug Namespace
-const dbgNs = 'BuildScratchEnv';
-SfdxFalconDebug.msg(`${dbgNs}`, `Debugging initialized for ${dbgNs}`);
-//─────────────────────────────────────────────────────────────────────────────────────────────────┐
-//─────────────────────────────────────────────────────────────────────────────────────────────────┘
+// Shared retry options for permission set assignments that depend on
+// PermissionSetGroup recalculation, which can take several seconds.
+const RETRY_OPTS = { maxAttempts: 6, delayMs: 10000, retryIf: isPermSetGroupNotUpdated };
 
 //─────────────────────────────────────────────────────────────────────────────────────────────────┐
 /**
  * @function    buildScratchEnv
  * @returns     {Promise<void>}
- * @summary     Builds a scratch org-based development environment.
+ * @summary     Builds a scratch org-based development environment for this demo.
  * @description Creates a new scratch org, deploys project source, configures permissions,
  *              creates the agent user, and assigns agent permissions.
  * @public
- * @example
- * ```
- * await buildScratchEnv();
- * ```
  */
 //─────────────────────────────────────────────────────────────────────────────────────────────────┘
 export async function buildScratchEnv() {
 
-  const ctx = {};
-  const tr  = TaskRunner.getInstance();
-  tr.ctx    = ctx;
+  const tr = TaskRunner.getInstance();
+  tr.ctx   = {};
 
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Reset all tracked files to the baseline tag before anything else runs.
   // This guarantees a clean, known state regardless of what the working tree
   // looks like when the script is invoked.
-  tr.addTask({
-    title: `Reset tracked files to baseline (${baselineTag})`,
-    task: async (ctx, task) => {
-      await $`git checkout ${baselineTag} -- .`;
-    }
-  });
+  resetToBaseline(tr, baselineTag);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Remove any empty directories left over from the baseline reset.
-  tr.addTask({
-    title: `Clean up empty directories`,
-    task: async (ctx, task) => {
-      await $`./clean-files-and-dirs.sh`;
-    }
-  });
+  cleanEmptyDirs(tr);
+  //*/
+  //───────────────────────────────────────────────────────────────────────────────────────────────┘
+  //───────────────────────────────────────────────────────────────────────────────────────────────┐
+  //*
+  // Enable Salesforce CLI autocomplete in CodeBuilder/Vibes IDE environments.
+  // Skipped automatically when not running in CodeBuilder.
+  enableSfAutocompleteForCodebuilder(tr);
+  //*/
+  //───────────────────────────────────────────────────────────────────────────────────────────────┘
+  //───────────────────────────────────────────────────────────────────────────────────────────────┐
+  //*
+  // Set global Git user.name and user.email if they are not already configured.
+  // Required by the VS Code Git extension. Skipped if values are already set,
+  // so it won't overwrite a developer's personal Git identity.
+  setGitGlobalDefaults(tr);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Delete the existing scratch org (if present).
-  tr.addTask(new SfdxTask(
-    `Delete existing scratch org`,
-    `sf org delete scratch -p -o ${devOrgAlias}`,
-    {suppressErrors: true}
-  ));
+  deleteScratchOrg(tr, devOrgAlias);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Create a new DEVELOPMENT scratch org.
-  tr.addTask(new SfdxTask(
-    `Create new scratch org`,
-    `sf org create scratch -d -a ${devOrgAlias} -f config/${devOrgConfigFile}`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+  createScratchOrg(tr, devOrgAlias, devOrgConfigFile);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -115,188 +120,126 @@ export async function buildScratchEnv() {
   // Assign Prompt Template perm sets to the scratch org user before deployment.
   // Without these, AiAuthoringBundle deployment fails validation because it can't
   // "see" the GenAiPromptTemplate metadata even though it's already in the org.
-  tr.addTask(new SfdxTask(
+  assignPermSets(tr,
     `Assign Prompt Template perm sets`,
-    `sf org assign permset -n EinsteinGPTPromptTemplateManager -n EinsteinGPTPromptTemplateUser`,
-    {suppressErrors: isDuplicatePermSetAssignment, renderStdioOnError: true}
-  ));
+    `-n EinsteinGPTPromptTemplateManager -n EinsteinGPTPromptTemplateUser`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Open the "Deployment Status" page in the developer's non-default browser.
-  tr.addTask(new SfdxTask(
-    `Open the Deployment Status page`,
-    alternativeBrowser
-      ? `sf org open -b ${alternativeBrowser} -p ${deploymentStatusPage}`
-      : `sf org open -p ${deploymentStatusPage}`,
-    {suppressErrors: false}
-  ));
+  openOrgPage(tr, deploymentStatusPage, alternativeBrowser);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Deploy project source to the new scratch org.
-  tr.addTask(new SfdxTask(
+  deployManifest(tr,
     `Deploy everything except agent authoring bundles`,
-    `sf project deploy start --manifest manifests/EverythingExceptAgents.package.xml`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+    `manifests/EverythingExceptAgents.package.xml`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Assign Space Station permissions to admin user before data import.
-  tr.addTask(new SfdxTask(
+  assignPermSets(tr,
     `Assign "Space_Station_Permset" to admin user`,
-    `sf org assign permset -n Space_Station_Permset`,
-    {suppressErrors: isDuplicatePermSetAssignment, renderStdioOnError: true}
-  ));
+    `-n Space_Station_Permset`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Import space station sample data (stations, resources, supplies).
-  tr.addTask(new SfdxTask(
+  importDataPlan(tr,
     `Import space station sample data`,
-    `sf data import tree --plan data-import/sample-data-plan.json`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+    `data-import/sample-data-plan.json`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Assign Property Management permissions to admin user before data import.
-  tr.addTask(new SfdxTask(
+  assignPermSets(tr,
     `Assign "Property_Management_Access" to admin user`,
-    `sf org assign permset -n Property_Management_Access`,
-    {suppressErrors: isDuplicatePermSetAssignment, renderStdioOnError: true}
-  ));
+    `-n Property_Management_Access`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  /*
+  //*
   // Import property manager sample data.
-  tr.addTask(new SfdxTask(
+  importDataPlan(tr,
     `Import property manager sample data`,
-    `sf data import tree --plan data-import/property-manager-data/data-plan.json`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+    `data-import/property-manager-data/data-plan.json`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Query for the Einstein Agent User profile ID.
-  tr.addTask(new SfdxTask(
-    `Query for Einstein Agent User profile ID`,
-    `sf data query -q "SELECT Id FROM Profile WHERE Name='Einstein Agent User'"`,
-    {suppressErrors: false, renderStdioOnError: true,
-      onSuccess: async (processPromise, ctx, task) => {
-        ctx.profileId = processPromise.stdoutJson.result.records[0].Id;
-        task.title = `Query for Einstein Agent User profile ID (${ctx.profileId})`;
-      }
-    }
-  ));
+  queryAgentUserProfileId(tr);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Update data-import/User.json with the profile ID and a unique username.
-  tr.addTask({
-    title: `Update User.json (${agentUsername})`,
-    task: async (ctx, task) => {
-      const userJson = fs.readJsonSync('data-import/User.json');
-      userJson.records[0].ProfileId = ctx.profileId;
-      userJson.records[0].Username = agentUsername;
-      fs.writeJsonSync('data-import/User.json', userJson, { spaces: 4 });
-    }
-  });
+  updateAgentUserJson(tr, agentUsername, agentNickname);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Create the agent user from data-import/User.json.
-  tr.addTask(new SfdxTask(
-    `Create agent user (${agentUsername})`,
-    `sf data import tree --files data-import/User.json`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+  createAgentUser(tr, agentUsername);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Assign admin permissions to the current user.
-  tr.addTask(new SfdxTask(
+  assignPermSets(tr,
     `Assign "AFDX_User_Perms" to admin user`,
-    `sf org assign permset -n AFDX_User_Perms`,
-    {suppressErrors: isDuplicatePermSetAssignment, renderStdioOnError: true,
-      retry: { maxAttempts: 6, delayMs: 10000, retryIf: isPermSetGroupNotUpdated }}
-  ));
+    `-n AFDX_User_Perms`,
+    { retry: RETRY_OPTS });
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Assign agent permissions to the agent user.
-  tr.addTask(new SfdxTask(
+  assignPermSets(tr,
     `Assign "AFDX_Agent_Perms" to ${agentUsername}`,
-    `sf org assign permset -n AFDX_Agent_Perms -b ${agentUsername}`,
-    {suppressErrors: isDuplicatePermSetAssignment, renderStdioOnError: true,
-      retry: { maxAttempts: 6, delayMs: 10000, retryIf: isPermSetGroupNotUpdated }}
-  ));
+    `-n AFDX_Agent_Perms -b ${agentUsername}`,
+    { retry: RETRY_OPTS });
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Replace the placeholder agent user in the Local Info Agent authoring bundle
   // with the actual agent username so the agent runs under the correct user.
-  tr.addTask({
-    title: `Update Local_Info_Agent default_agent_user (${agentUsername})`,
-    task: async (ctx, task) => {
-      const agentFilePath = 'force-app/main/default/aiAuthoringBundles/Local_Info_Agent/Local_Info_Agent.agent';
-      const content = fs.readFileSync(agentFilePath, 'utf8');
-      fs.writeFileSync(agentFilePath, content.replace('UPDATE_WITH_YOUR_DEFAULT_AGENT_USER', agentUsername));
-    }
-  });
+  setAgentBundleUser(tr, 'Local_Info_Agent', agentUsername);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Deploy the authoring bundle with the agent user set.
-  tr.addTask(new SfdxTask(
+  deployManifest(tr,
     `Deploy authoring bundle with agent user set`,
-    `sf project deploy start --manifest manifests/AuthoringBundles.package.xml`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+    `manifests/AuthoringBundles.package.xml`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Publish the Local Info Agent.
-  tr.addTask(new SfdxTask(
-    `Publish the Local Info Agent`,
-    `sf agent publish authoring-bundle -n Local_Info_Agent`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+  publishAgent(tr, 'Local_Info_Agent', { skipRetrieve: true });
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Activate the Local Info Agent.
-  tr.addTask(new SfdxTask(
-    `Activate the Local Info Agent`,
-    `sf agent activate -n Local_Info_Agent --version 1`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+  activateAgent(tr, 'Local_Info_Agent');
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
   // Deploy agent tests.
-  tr.addTask(new SfdxTask(
+  deployManifest(tr,
     `Deploy agent tests`,
-    `sf project deploy start --manifest manifests/AgentTests.package.xml`,
-    {suppressErrors: false, renderStdioOnError: true}
-  ));
+    `manifests/AgentTests.package.xml`);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -304,14 +247,10 @@ export async function buildScratchEnv() {
   // Reset all tracked files back to the baseline tag after setup completes.
   // This restores files that were modified during setup (e.g. data-import/User.json)
   // so the repo is left in the same clean state it started in.
-  tr.addTask({
-    title: `Reset files modified during setup to baseline (${baselineTag})`,
-    task: async (ctx, task) => {
-      await $`git checkout ${baselineTag} -- .`;
-    }
-  });
+  postSetupReset(tr, baselineTag);
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
+
   // Run the tasks.
   try {
     return tr.runTasks();
