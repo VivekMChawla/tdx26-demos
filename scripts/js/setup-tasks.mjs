@@ -220,7 +220,7 @@ export function enableSfAutocompleteForCodebuilder(tr) {
     title: `Enable Salesforce CLI autocomplete`,
     task: async (ctx, task) => {
       if (!fs.existsSync(codebuilderHome)) {
-        task.skip('Not running in CodeBuilder/Vibes IDE — skipping');
+        task.skip('Skipped sf autocomplete setup (Not running in Vibes IDE)');
         return;
       }
       await $`rm -f ${bashrcLocal}`;
@@ -428,7 +428,7 @@ export function setGitGlobalDefaults(tr, name = 'Developer Benjamin', email = 'b
       const currentName  = (await $`git config --get --global user.name`.nothrow()).stdout.trim();
       const currentEmail = (await $`git config --get --global user.email`.nothrow()).stdout.trim();
       if (currentName && currentEmail) {
-        task.skip(`Already set — ${currentName} <${currentEmail}>`);
+        task.skip(`Skipped git config. Global values already set — ${currentName} <${currentEmail}>`);
         return;
       }
       if (!currentName)  { await $`git config --global user.name ${name}`; }
