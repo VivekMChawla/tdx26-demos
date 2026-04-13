@@ -126,7 +126,7 @@ export async function buildScratchEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Open the "Deployment Status" page in the developer's non-default browser.
   openOrgPage(tr, deploymentStatusPage, alternativeBrowser);
   //*/
@@ -140,7 +140,7 @@ export async function buildScratchEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Assign Space Station permissions to admin user before data import.
   assignPermSets(tr,
     `Assign "Space_Station_Permset" to admin user`,
@@ -148,7 +148,7 @@ export async function buildScratchEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Import space station sample data (stations, resources, supplies).
   importDataPlan(tr,
     `Import space station sample data`,
@@ -156,7 +156,7 @@ export async function buildScratchEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Assign Property Management permissions to admin user before data import.
   assignPermSets(tr,
     `Assign "Property_Management_Access" to admin user`,
@@ -164,7 +164,7 @@ export async function buildScratchEnv() {
   //*/
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
-  //*
+  /*
   // Import property manager sample data.
   importDataPlan(tr,
     `Import property manager sample data`,
