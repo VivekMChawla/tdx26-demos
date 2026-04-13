@@ -32,7 +32,7 @@ elif [ -z "$LOCAL_TAG_HASH" ]; then
   echo "  Remote: $REMOTE_TAG_HASH"
   echo ""
   echo "Run this command to sync with the remote, then re-run setup:"
-  echo "  git pull --tags --force"
+  echo "  git pull --tags --force --rebase"
   exit 1
 elif [ "$LOCAL_TAG_HASH" != "$REMOTE_TAG_HASH" ]; then
   echo "Error: local tag '$BASELINE_TAG' is out of date."
@@ -40,7 +40,7 @@ elif [ "$LOCAL_TAG_HASH" != "$REMOTE_TAG_HASH" ]; then
   echo "  Remote: $REMOTE_TAG_HASH"
   echo ""
   echo "Run this command to sync with the remote, then re-run setup:"
-  echo "  git pull --tags --force"
+  echo "  git pull --tags --force --rebase"
   exit 1
 fi
 
