@@ -14,7 +14,7 @@
 set -euo pipefail
 
 SOURCE="main"
-EXCLUDED=("force-app" "scripts/js/build-durable-org-env.mjs" "scripts/js/build-scratch-env.mjs" "sfdx-project.json")
+EXCLUDED=("data-import" "force-app" "scripts/js/build-durable-org-env.mjs" "scripts/js/build-scratch-env.mjs" "sfdx-project.json")
 
 # ── Resolve target branches ───────────────────────────────────────────────────
 if [ $# -gt 0 ]; then
