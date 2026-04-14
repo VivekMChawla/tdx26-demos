@@ -216,6 +216,20 @@ export async function buildScratchEnv() {
   //───────────────────────────────────────────────────────────────────────────────────────────────┘
   //───────────────────────────────────────────────────────────────────────────────────────────────┐
   //*
+  // Replace the placeholder agent user in the CKO Demo Agent authoring bundle
+  // with the actual agent username so the agent runs under the correct user.
+  setAgentBundleUser(tr, 'CKO_Demo_Agent', agentUsername);
+  //*/
+  //───────────────────────────────────────────────────────────────────────────────────────────────┘
+  //───────────────────────────────────────────────────────────────────────────────────────────────┐
+  //*
+  // Replace the placeholder agent user in the Automated CKO Agent authoring bundle
+  // with the actual agent username so the agent runs under the correct user.
+  setAgentBundleUser(tr, 'Automated_CKO_Agent', agentUsername);
+  //*/
+  //───────────────────────────────────────────────────────────────────────────────────────────────┘
+  //───────────────────────────────────────────────────────────────────────────────────────────────┐
+  //*
   // Deploy the authoring bundle with the agent user set.
   deployManifest(tr,
     `Deploy authoring bundle with agent user set`,

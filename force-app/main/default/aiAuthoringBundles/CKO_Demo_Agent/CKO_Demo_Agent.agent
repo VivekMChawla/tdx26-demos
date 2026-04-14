@@ -6,7 +6,7 @@ system:
 
 config:
     developer_name: "CKO_Demo_Agent"
-    default_agent_user: "cko_demo_agent@00ddq000009eupv254697110.ext"
+    default_agent_user: "UPDATE_WITH_YOUR_DEFAULT_AGENT_USER"
     agent_label: "CKO Demo Agent"
     description: "New agent description"
 
