@@ -5,7 +5,7 @@
       "default": true
     }
   ],
-  "name": "tdx26-demos",
+  "name": "afdx-breakout-demo",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "66.0"
