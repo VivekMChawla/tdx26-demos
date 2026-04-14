@@ -7,7 +7,7 @@ system:
 
 config:
     developer_name: "Order_Management_Agent"
-    default_agent_user: "cko_demo_agent@00ddq000009eupv254697110.ext"
+    default_agent_user: "UPDATE_WITH_YOUR_DEFAULT_AGENT_USER"
     agent_label: "Order Management Agent"
     description: "Customer Order Management agent with email-based actions"
 
