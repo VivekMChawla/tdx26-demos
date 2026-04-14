@@ -16,25 +16,17 @@ language:
   additional_locales: ""
 
 variables:
-  EndUserId: linked string
-    source: @MessagingSession.MessagingEndUserId
-    description: "This variable may also be referred to as MessagingEndUser Id"
-  RoutableId: linked string
-    source: @MessagingSession.Id
-    description: "This variable may also be referred to as MessagingSession Id"
-  ContactId: linked string
-    source: @MessagingEndUser.ContactId
-    description: "This variable may also be referred to as MessagingEndUser ContactId"
-  EndUserLanguage: linked string
-    source: @MessagingSession.EndUserLanguage
-    description: "This variable may also be referred to as MessagingSession EndUserLanguage"
-  CustomerEmail: mutable string
-    description: "Customer's email address for lookups"
-  CheckedChurnScore: mutable boolean = False
-    description: "Indicates whether the customer churn score has been checked"
-    label: "Checked Churn Score"
-  ChurnScore: mutable number
-    label: "Churn Score"
+    CustomerEmail: mutable string
+        description: "Customer's email address for lookups"
+    CheckedChurnScore: mutable boolean = False
+        description: "Indicates whether the customer churn score has been checked"
+        label: "Checked Churn Score"
+    ChurnScore: mutable number
+        label: "Churn Score"
+        description: ""
+    Customer_Tier: mutable string
+        description: "Customer Tier"
+        label: "Customer Tier"
 
 start_agent topic_selector:
   label: "Topic Selector"
@@ -85,6 +77,8 @@ topic Order_Management:
       Check_Order_Status: @actions.Check_Order_Status
         with EmailAddress = ...
 
+
+
   actions:
     Check_Order_Status:
       label: "Check Order Status"
@@ -124,6 +118,8 @@ topic Account_Management:
       Update_Address: @actions.Update_Address
         with UserAddress = ...
 
+
+
   actions:
     Update_Address:
       label: "Update Address"
@@ -155,6 +151,8 @@ topic Process_Refunds:
             if @variables.CheckedChurnScore == False:
                 run @actions.GetUserChurnRisk
                     with EmailAddress = @variables.CustomerEmail
+                    set @variables.ChurnScore = @outputs.ChurnRisk
+                    set @variables.Customer_Tier = @outputs.CustomerTier
                 set @variables.CheckedChurnScore = True
             if @variables.ChurnScore >= 50:
                 |Process the users return with {!@actions.Process_Refund}
