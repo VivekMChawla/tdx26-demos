@@ -3,15 +3,15 @@
     <apiVersion>62.0</apiVersion>
     <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <assignments>
-        <name>CalculateRisk</name>
-        <label>Calculate Risk</label>
-        <locationX>176</locationX>
-        <locationY>134</locationY>
+        <name>SetDefaultRisk</name>
+        <label>Set Default Risk</label>
+        <locationX>314</locationX>
+        <locationY>242</locationY>
         <assignmentItems>
             <assignToReference>ChurnRisk</assignToReference>
             <operator>Assign</operator>
             <value>
-                <numberValue>85.5</numberValue>
+                <numberValue>55.0</numberValue>
             </value>
         </assignmentItems>
         <assignmentItems>
@@ -22,6 +22,86 @@
             </value>
         </assignmentItems>
     </assignments>
+    <assignments>
+        <name>SetElijahRisk</name>
+        <label>Set Elijah Risk</label>
+        <locationX>50</locationX>
+        <locationY>242</locationY>
+        <assignmentItems>
+            <assignToReference>ChurnRisk</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <numberValue>55.0</numberValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>CustomerTier</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Premium</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>SetTest2Risk</name>
+        <label>Set Test2 Risk</label>
+        <locationX>182</locationX>
+        <locationY>242</locationY>
+        <assignmentItems>
+            <assignToReference>ChurnRisk</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <numberValue>70.0</numberValue>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>CustomerTier</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Plus</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <decisions>
+        <name>CheckEmail</name>
+        <label>Check Email</label>
+        <locationX>176</locationX>
+        <locationY>134</locationY>
+        <defaultConnector>
+            <targetReference>SetDefaultRisk</targetReference>
+        </defaultConnector>
+        <defaultConnectorLabel>Default</defaultConnectorLabel>
+        <rules>
+            <name>IsElijah</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>EmailAddress</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>elijah@salesforce.com</stringValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>SetElijahRisk</targetReference>
+            </connector>
+            <label>Is Elijah</label>
+        </rules>
+        <rules>
+            <name>IsTest2</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>EmailAddress</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>test2@salesforce.com</stringValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>SetTest2Risk</targetReference>
+            </connector>
+            <label>Is Test2</label>
+        </rules>
+    </decisions>
     <description>Gets customer churn risk using email address</description>
     <label>Get Churn Risk by Email</label>
     <processMetadataValues>
@@ -48,7 +128,7 @@
         <locationX>50</locationX>
         <locationY>0</locationY>
         <connector>
-            <targetReference>CalculateRisk</targetReference>
+            <targetReference>CheckEmail</targetReference>
         </connector>
     </start>
     <status>Active</status>
