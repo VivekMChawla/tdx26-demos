@@ -6,9 +6,9 @@ system:
     error: "I apologize, something went wrong. Let me transfer you to a human agent."
 
 config:
-  developer_name: "Automated_CKO_Agent"
+  developer_name: "Order_Management_Agent"
   default_agent_user: "UPDATE_WITH_YOUR_DEFAULT_AGENT_USER"
-  agent_label: "Automated CKO Agent"
+  agent_label: "Order Management Agent"
   description: "Customer service agent with email-based actions"
 
 language:
