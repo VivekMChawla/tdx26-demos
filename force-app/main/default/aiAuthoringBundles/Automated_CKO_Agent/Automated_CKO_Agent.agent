@@ -1,0 +1,344 @@
+system:
+  instructions: | 
+    "You are a professional customer service agent. When presenting information to customers, always format your responses with clear structure: use bullet points for lists, bold headings for sections, and organize information in an easy-to-read format. Be polite, helpful, and thorough in your assistance."
+  messages:
+    welcome: "Hi! I'm here to help with your orders, refunds, and account updates. How can I assist you?"
+    error: "I apologize, something went wrong. Let me transfer you to a human agent."
+
+config:
+  developer_name: "Automated_CKO_Agent"
+  default_agent_user: "cko_demo_agent@00ddq000009eupv254697110.ext"
+  agent_label: "Automated CKO Agent"
+  description: "Customer service agent with email-based actions"
+
+language:
+  default_locale: "en_US"
+  additional_locales: ""
+
+variables:
+  EndUserId: linked string
+    source: @MessagingSession.MessagingEndUserId
+    description: "This variable may also be referred to as MessagingEndUser Id"
+  RoutableId: linked string
+    source: @MessagingSession.Id
+    description: "This variable may also be referred to as MessagingSession Id"
+  ContactId: linked string
+    source: @MessagingEndUser.ContactId
+    description: "This variable may also be referred to as MessagingEndUser ContactId"
+  EndUserLanguage: linked string
+    source: @MessagingSession.EndUserLanguage
+    description: "This variable may also be referred to as MessagingSession EndUserLanguage"
+  CustomerEmail: mutable string
+    description: "Customer's email address for lookups"
+  CheckedChurnScore: mutable boolean = False
+    description: "Indicates whether the customer churn score has been checked"
+    label: "Checked Churn Score"
+  ChurnScore: mutable number
+    label: "Churn Score"
+
+start_agent topic_selector:
+  label: "Topic Selector"
+  description: "Welcome the user and determine the appropriate topic based on user input"
+  reasoning:
+    instructions: ->
+      | Select the best tool to call based on conversation history and user's intent.
+    actions:
+      go_to_escalation: @utils.transition to @topic.escalation
+      go_to_off_topic: @utils.transition to @topic.off_topic
+      go_to_ambiguous_question: @utils.transition to @topic.ambiguous_question
+      go_to_Order_Management: @utils.transition to @topic.Order_Management
+      go_to_Account_Management: @utils.transition to @topic.Account_Management
+      go_to_Process_Refunds: @utils.transition to @topic.Process_Refunds
+
+topic escalation:
+  label: "Escalation"
+  description: "Handles requests to escalate to a human agent"
+  reasoning:
+    instructions: ->
+      | Apologize for the inconvenience and transfer the user to a human agent.
+    actions:
+      transfer_to_agent: @utils.escalate
+
+topic off_topic:
+  label: "Off Topic"
+  description: "Handles queries that do not relate to the agent's capabilities."
+  reasoning:
+    instructions: ->
+      | Politely inform the user that you cannot assist with that topic and ask if they need help with orders, accounts, or refunds.
+
+topic ambiguous_question:
+  label: "Ambiguous Question"
+  description: "Handles unclear user requests."
+  reasoning:
+    instructions: ->
+      | Ask the user to clarify their request so you can route them to the correct topic.
+
+topic Order_Management:
+  label: "Order Management"
+  description: "Handles checking order status and tracking."
+  reasoning:
+    instructions: ->
+      | When the user asks for their order status, use the Check Order action with their email address. Present the results in a structured format with clear bullet points.
+    actions:
+      Check_Order_Status: @actions.Check_Order_Status
+        with EmailAddress = ...
+
+  actions:
+    Check_Order_Status:
+      label: "Check Order Status"
+      description: "Check order status using customer email"
+      target: "flow://Check_Order_Email"
+      inputs:
+        EmailAddress: string
+          label: "Email Address"
+          description: "Customer email address"
+          is_required: True
+          complex_data_type_name: "lightning__textType"
+          is_user_input: False
+          filter_from_agent: False
+          is_displayable: False
+      outputs:
+        OrderStatus: string
+          label: "Order Status"
+          description: "Current status of the order"
+          complex_data_type_name: "lightning__textType"
+          developer_name: "OrderStatus"
+          is_displayable: True
+          filter_from_agent: False
+        TrackingNumber: string
+          label: "Tracking Number"
+          description: "Package tracking number"
+          complex_data_type_name: "lightning__textType"
+          developer_name: "TrackingNumber"
+          is_displayable: True
+          filter_from_agent: False
+        OrderNumber: string
+          label: "Order Number"
+          description: "Order number"
+          complex_data_type_name: "lightning__textType"
+          developer_name: "OrderNumber"
+          is_displayable: True
+          filter_from_agent: False
+
+topic Account_Management:
+  label: "Account Management"
+  description: "Handles account updates like changing a user address."
+  reasoning:
+    instructions: ->
+      | When the user asks to update their address, use the Update Address action. Format the confirmation in a clear, easy-to-read manner.
+    actions:
+      Update_Address: @actions.Update_Address
+        with UserAddress = ...
+
+  actions:
+    Update_Address:
+      label: "Update Address"
+      description: "Update the user's delivery address"
+      target: "flow://Update_Address_Email"
+      inputs:
+        UserAddress: string
+          label: "User Address"
+          description: "New delivery address"
+          is_required: False
+          complex_data_type_name: "lightning__textType"
+          is_user_input: False
+          filter_from_agent: False
+          is_displayable: False
+      outputs:
+        SuccessMessage: string
+          label: "Success Message"
+          description: "Confirmation message"
+          complex_data_type_name: "lightning__textType"
+          developer_name: "SuccessMessage"
+          is_displayable: True
+          filter_from_agent: False
+
+topic Process_Refunds:
+    label: "Process Refunds"
+    description: "Handles refund requests and provides customer profile information."
+    reasoning:
+        instructions: ->
+            |When handling refunds, first check the customer's churn risk score using their email address.
+             Based on the churn score:
+            if @variables.CheckedChurnScore == False:
+                run @actions.GetUserChurnRisk
+                    with EmailAddress = @variables.CustomerEmail
+                set @variables.CheckedChurnScore = True
+            if @variables.ChurnScore >= 50:
+                |Process the users return with {!@actions.Process_Refund}
+            else:
+                |Poletiely appologieze and inform the customer they are not eligible for a refund.
+        actions:
+            Process_Refund: @actions.Process_Refund
+                with EmailAddress = ...
+            GetUserChurnRisk: @actions.GetUserChurnRisk
+                with EmailAddress = ...
+
+
+
+    actions:
+        Process_Refund:
+          label: "Process Refund"
+          description: "Process return/refund using customer email"
+          target: "flow://Process_Refund_Email"
+          inputs:
+            EmailAddress: string
+              label: "Email Address"
+              description: "Customer email address"
+              is_required: True
+              complex_data_type_name: "lightning__textType"
+              is_user_input: False
+              filter_from_agent: False
+              is_displayable: False
+          outputs:
+            RefundSuccess: boolean
+              label: "Refund Success"
+              description: "Whether the refund was successful"
+              complex_data_type_name: "lightning__booleanType"
+              developer_name: "RefundSuccess"
+              is_displayable: False
+              filter_from_agent: False
+            ReturnDetails: string
+              label: "Return Details"
+              description: "Details about the refund"
+              complex_data_type_name: "lightning__textType"
+              developer_name: "ReturnDetails"
+              is_displayable: True
+              filter_from_agent: False
+            RefundAmount: object
+              label: "Refund Amount"
+              description: "Amount being refunded"
+              complex_data_type_name: "lightning__currencyType"
+              developer_name: "RefundAmount"
+              is_displayable: True
+              filter_from_agent: False
+            OrderNumber: string
+              label: "Order Number"
+              description: "Order number"
+              complex_data_type_name: "lightning__textType"
+              developer_name: "OrderNumber"
+              is_displayable: True
+              filter_from_agent: False
+        GetUserChurnRisk:
+          label: "Get User Churn Risk"
+          description: "Get customer churn risk by email"
+          target: "flow://GetUserChurnRisk_Email"
+          inputs:
+            EmailAddress: string
+              label: "Email Address"
+              description: "Customer email address"
+              is_required: False
+              complex_data_type_name: "lightning__textType"
+              is_user_input: False
+              filter_from_agent: False
+              is_displayable: False
+          outputs:
+            ChurnRisk: number
+              label: "Churn Risk"
+              description: "Customer churn risk score"
+              complex_data_type_name: "lightning__numberType"
+              developer_name: "ChurnRisk"
+              is_displayable: False
+              filter_from_agent: False
+            CustomerTier: string
+              label: "Customer Tier"
+              description: "Customer tier level"
+              complex_data_type_name: "lightning__textType"
+              developer_name: "CustomerTier"
+              is_displayable: False
+              filter_from_agent: False
+
+actions:
+  Update_Address_Email:
+    description: "Updates the customer's delivery address"
+    label: "Update Address"
+    require_user_confirmation: True
+    include_in_progress_indicator: True
+    source: "Update_Address_Email"
+    target: "flow://Update_Address_Email"
+    inputs:
+      "UserAddress": string
+        description: "New delivery address"
+        label: "Address"
+        is_displayable: False
+        is_used_by_planner: True
+        filter_from_agent: False
+
+  Check_Order_Email:
+    description: "Checks order status using customer email address"
+    label: "Check Order by Email"
+    require_user_confirmation: False
+    include_in_progress_indicator: True
+    source: "Check_Order_Email"
+    target: "flow://Check_Order_Email"
+    inputs:
+      "EmailAddress": string
+        description: "Customer email address for order lookup"
+        label: "Email Address"
+        is_required: True
+        is_user_input: False
+
+  Process_Refund_Email:
+    description: "Processes return/refund using customer email"
+    label: "Process Refund by Email"
+    require_user_confirmation: False
+    include_in_progress_indicator: False
+    source: "Process_Refund_Email"
+    target: "flow://Process_Refund_Email"
+    inputs:
+      "EmailAddress": string
+        description: "Customer email address"
+        label: "Email Address"
+        is_required: True
+        is_user_input: False
+    outputs:
+      "RefundSuccess": boolean
+        description: "Returns whether or not the refund was a success"
+        label: "Refund Success"
+        is_displayable: False
+        is_used_by_planner: True
+        filter_from_agent: False
+      "ReturnDetails": string
+        description: "Returns info about the return"
+        label: "Return Details"
+        is_displayable: True
+        is_used_by_planner: True
+        filter_from_agent: False
+      "RefundAmount": object
+        description: "Refund amount"
+        label: "Refund Amount"
+        is_displayable: True
+        is_used_by_planner: True
+        filter_from_agent: False
+      "OrderNumber": string
+        description: "Order number"
+        label: "Order Number"
+        is_displayable: True
+        is_used_by_planner: True
+        filter_from_agent: False
+
+  GetUserChurnRisk_Email:
+    description: "Gets customer churn risk using email address"
+    label: "Get User Churn Risk by Email"
+    require_user_confirmation: False
+    include_in_progress_indicator: False
+    source: "GetUserChurnRisk_Email"
+    target: "flow://GetUserChurnRisk_Email"
+    inputs:
+      "EmailAddress": string
+        description: "Customer email address"
+        label: "Email Address"
+        is_required: False
+        is_user_input: False
+    outputs:
+      "ChurnRisk": number
+        description: "Customer churn risk score"
+        label: "Churn Risk"
+        is_displayable: False
+        filter_from_agent: False
+        complex_data_type_name: "lightning__numberType"
+      "CustomerTier": string
+        description: "Customer tier level"
+        label: "Customer Tier"
+        is_displayable: False
+        filter_from_agent: False
