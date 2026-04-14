@@ -6,10 +6,10 @@ system:
     error: "I apologize, something went wrong. Let me transfer you to a human agent."
 
 config:
-  developer_name: "Order_Management_Agent"
-  default_agent_user: "UPDATE_WITH_YOUR_DEFAULT_AGENT_USER"
-  agent_label: "Order Management Agent"
-  description: "Customer service agent with email-based actions"
+    developer_name: "Order_Management_Agent"
+    default_agent_user: "cko_demo_agent@00ddq000009eupv254697110.ext"
+    agent_label: "Order Management Agent"
+    description: "Customer Order Management agent with email-based actions"
 
 language:
   default_locale: "en_US"
@@ -28,21 +28,21 @@ variables:
         description: "Customer Tier"
         label: "Customer Tier"
 
-start_agent topic_selector:
-  label: "Topic Selector"
+start_agent agent_router:
+  label: "Agent Router"
   description: "Welcome the user and determine the appropriate topic based on user input"
   reasoning:
     instructions: ->
       | Select the best tool to call based on conversation history and user's intent.
     actions:
-      go_to_escalation: @utils.transition to @topic.escalation
-      go_to_off_topic: @utils.transition to @topic.off_topic
-      go_to_ambiguous_question: @utils.transition to @topic.ambiguous_question
-      go_to_Order_Management: @utils.transition to @topic.Order_Management
-      go_to_Account_Management: @utils.transition to @topic.Account_Management
-      go_to_Process_Refunds: @utils.transition to @topic.Process_Refunds
+      go_to_escalation: @utils.transition to @subagent.escalation
+      go_to_off_topic: @utils.transition to @subagent.off_topic
+      go_to_ambiguous_question: @utils.transition to @subagent.ambiguous_question
+      go_to_Order_Management: @utils.transition to @subagent.Order_Management
+      go_to_Account_Management: @utils.transition to @subagent.Account_Management
+      go_to_Process_Refunds: @utils.transition to @subagent.Process_Refunds
 
-topic escalation:
+subagent escalation:
   label: "Escalation"
   description: "Handles requests to escalate to a human agent"
   reasoning:
@@ -52,21 +52,21 @@ topic escalation:
       transfer_to_agent: @utils.escalate
         description: "Escalate when the user wants something no other topic handles"
 
-topic off_topic:
+subagent off_topic:
   label: "Off Topic"
   description: "Handles queries that do not relate to the agent's capabilities."
   reasoning:
     instructions: ->
       | Politely inform the user that you cannot assist with that topic and ask if they need help with orders, accounts, or refunds.
 
-topic ambiguous_question:
+subagent ambiguous_question:
   label: "Ambiguous Question"
   description: "Handles unclear user requests."
   reasoning:
     instructions: ->
       | Ask the user to clarify their request so you can route them to the correct topic.
 
-topic Order_Management:
+subagent Order_Management:
   label: "Order Management"
   description: "Handles checking order status and tracking."
   reasoning:
@@ -108,7 +108,7 @@ topic Order_Management:
           complex_data_type_name: "lightning__textType"
           developer_name: "OrderNumber"
 
-topic Account_Management:
+subagent Account_Management:
   label: "Account Management"
   description: "Handles account updates like changing a user address."
   reasoning:
@@ -141,7 +141,7 @@ topic Account_Management:
           is_displayable: True
           filter_from_agent: False
 
-topic Process_Refunds:
+subagent Process_Refunds:
     label: "Process Refunds"
     description: "Handles refund requests and provides customer profile information."
     reasoning:
