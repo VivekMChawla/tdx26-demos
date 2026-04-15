@@ -4,17 +4,14 @@ system:
   messages:
     welcome: "Hi! I'm here to help with your orders, refunds, and account updates. How can I assist you?"
     error: "I apologize, something went wrong. Let me transfer you to a human agent."
-
 config:
     developer_name: "Order_Management_Agent"
     default_agent_user: "UPDATE_WITH_YOUR_DEFAULT_AGENT_USER"
     agent_label: "Order Management Agent"
     description: "Customer Order Management agent with email-based actions"
-
 language:
   default_locale: "en_US"
   additional_locales: ""
-
 variables:
     CustomerEmail: mutable string
         description: "Customer's email address for lookups"
@@ -30,43 +27,37 @@ variables:
     Customer_Verified: mutable boolean = False
         description: "Customer Verification Status"
         label: "Customer Verified"
-
 start_agent agent_router:
     label: "Agent Router"
     description: "Welcome the user and determine the appropriate topic based on user input"
     reasoning:
         instructions: ->
             if @variables.Customer_Verified == False:
-                transition to @subagent.Customer_Verification
+                transition to @topic.Customer_Verification
             |Select the best tool to call based on conversation history and user's intent.
         actions:
-            go_to_escalation: @utils.transition to @subagent.escalation
-            go_to_off_topic: @utils.transition to @subagent.off_topic
-            go_to_ambiguous_question: @utils.transition to @subagent.ambiguous_question
-            go_to_Order_Management: @utils.transition to @subagent.Order_Management
-            go_to_Account_Management: @utils.transition to @subagent.Account_Management
-            go_to_Process_Refunds: @utils.transition to @subagent.Process_Refunds
-            go_to_Customer_Verification: @utils.transition to @subagent.Customer_Verification
-
-
-subagent Customer_Verification:
+            go_to_escalation: @utils.transition to @topic.escalation
+            go_to_off_topic: @utils.transition to @topic.off_topic
+            go_to_ambiguous_question: @utils.transition to @topic.ambiguous_question
+            go_to_Order_Management: @utils.transition to @topic.Order_Management
+            go_to_Account_Management: @utils.transition to @topic.Account_Management
+            go_to_Process_Refunds: @utils.transition to @topic.Process_Refunds
+            go_to_Customer_Verification: @utils.transition to @topic.Customer_Verification
+topic Customer_Verification:
     label: "Customer Verification"
     description: |
-
         Verify the Customer and Capture their Email address
     reasoning:
         instructions: ->
             if @variables.Customer_Verified == True:
                 transition to @topic.agent_router
-            | Ask the user for their email address and then save it using the {!@actions.Set_Customer_Email}​ action.
+            | Ask the user for their email address and then save it using the {!@actions.Set_Customer_Email} action.
         actions:
             Set_Customer_Email: @utils.setVariables
                 description: "Set the Customer Email and check if this is a valid customer."
                 with CustomerEmail = ...
                 with Customer_Verified = True
-
-
-subagent escalation:
+topic escalation:
   label: "Escalation"
   description: "Handles requests to escalate to a human agent"
   reasoning:
@@ -75,34 +66,27 @@ subagent escalation:
     actions:
       transfer_to_agent: @utils.escalate
         description: "Escalate when the user wants something no other topic handles"
-
-subagent off_topic:
+topic off_topic:
   label: "Off Topic"
   description: "Handles queries that do not relate to the agent's capabilities."
   reasoning:
     instructions: ->
       | Politely inform the user that you cannot assist with that topic and ask if they need help with orders, accounts, or refunds.
-
-subagent ambiguous_question:
+topic ambiguous_question:
   label: "Ambiguous Question"
   description: "Handles unclear user requests."
   reasoning:
     instructions: ->
       | Ask the user to clarify their request so you can route them to the correct topic.
-
-subagent Order_Management:
+topic Order_Management:
   label: "Order Management"
   description: "Handles checking order status and tracking."
   reasoning:
     instructions: ->
       | When the user asks for their order status, use the Check Order action with their email address. Present the results in a structured format with clear bullet points.
-
     actions:
       Check_Order_Status: @actions.Check_Order_Status
         with EmailAddress = ...
-
-
-
   actions:
     Check_Order_Status:
       label: "Check Order Status"
@@ -131,8 +115,7 @@ subagent Order_Management:
           description: "Order number"
           complex_data_type_name: "lightning__textType"
           developer_name: "OrderNumber"
-
-subagent Account_Management:
+topic Account_Management:
   label: "Account Management"
   description: "Handles account updates like changing a user address."
   reasoning:
@@ -141,9 +124,6 @@ subagent Account_Management:
     actions:
       Update_Address: @actions.Update_Address
         with UserAddress = ...
-
-
-
   actions:
     Update_Address:
       label: "Update Address"
@@ -164,8 +144,7 @@ subagent Account_Management:
           developer_name: "SuccessMessage"
           is_displayable: True
           filter_from_agent: False
-
-subagent Process_Refunds:
+topic Process_Refunds:
     label: "Process Refunds"
     description: "Handles refund requests and provides customer profile information."
     reasoning:
@@ -178,9 +157,7 @@ subagent Process_Refunds:
                     set @variables.ChurnScore = @outputs.ChurnRisk
                     set @variables.Customer_Tier = @outputs.CustomerTier
                 set @variables.CheckedChurnScore = True
-
             | Users Churn Score is {!@variables.ChurnScore}
-            
             if @variables.ChurnScore >= 50:
                 |Process the users return with {!@actions.Process_Refund}
             else:
@@ -190,9 +167,6 @@ subagent Process_Refunds:
                 with EmailAddress = ...
             GetUserChurnRisk: @actions.GetUserChurnRisk
                 with EmailAddress = ...
-
-
-
     actions:
         Process_Refund:
           label: "Process Refund"
