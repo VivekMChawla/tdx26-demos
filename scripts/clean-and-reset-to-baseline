@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# clean-and-reset-to-baseline
+#
+# Resets the project to a clean baseline state without running the full setup
+# script. Useful for quickly restoring a demo environment between runs.
+#
+# What it does:
+#   1. Discards all uncommitted changes (staged and unstaged).
+#   2. Syncs with the remote, including updated tags.
+#   3. Resets the branch to the baseline tag.
+#   4. Removes untracked files and empty directories.
+#
+# Usage:
+#   ./scripts/clean-and-reset-to-baseline
+#
+set -euo pipefail
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+BASELINE_TAG="${BRANCH}-baseline"
+
+echo "── Resetting to baseline on '$BRANCH' ──"
+echo ""
+
+# ── Discard all uncommitted changes ──────────────────────────────────────────
+echo "Discarding uncommitted changes..."
+git checkout -- .
+git clean -fd
+echo ""
+
+# ── Sync with remote (tags + branch) ────────────────────────────────────────
+echo "Syncing with remote..."
+git pull --tags --force --rebase
+echo ""
+
+# ── Verify the baseline tag exists locally ───────────────────────────────────
+if ! git rev-parse "$BASELINE_TAG" > /dev/null 2>&1; then
+  echo "Error: baseline tag '$BASELINE_TAG' not found."
+  echo "Ensure the tag has been created and pushed to the remote."
+  exit 1
+fi
+
+# ── Reset branch to the baseline tag ────────────────────────────────────────
+echo "Resetting to $BASELINE_TAG..."
+git reset --hard "$BASELINE_TAG"
+echo ""
+
+# ── Remove .sfdx/agents ─────────────────────────────────────────────────────
+if [ -d ".sfdx/agents" ]; then
+  echo "Removing .sfdx/agents..."
+  rm -rf ".sfdx/agents"
+fi
+
+# ── Remove untracked files and directories ───────────────────────────────────
+echo "Removing untracked files..."
+git clean -fd
+echo ""
+
+# ── Remove empty directories ────────────────────────────────────────────────
+echo "Scanning for empty directories..."
+COUNT=$(find . -not -path './.git/*' -not -path './.sf/*' -not -path './.sfdx/*' -type d -empty | wc -l | tr -d ' ')
+
+if [ "$COUNT" -gt 0 ]; then
+  echo "Removing $COUNT empty director$([ "$COUNT" -eq 1 ] && echo 'y' || echo 'ies'):"
+  find . -not -path './.git/*' -not -path './.sf/*' -not -path './.sfdx/*' -type d -empty -print -delete
+fi
+
+echo ""
+echo "── Done. Branch '$BRANCH' is now at $BASELINE_TAG. ──"
